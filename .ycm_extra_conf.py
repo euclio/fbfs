@@ -41,10 +41,10 @@ flags = [
 '-std=c++11',
 '-x',
 'c++',
-'-D_FILE_OFFSET_BITS=64'
+'-I',
+'include',
+'-D_FILE_OFFSET_BITS=64',
 '-isystem',
-# This path will only work on OS X, but extra paths that don't exist are not
-# harmful
 '/usr/include/fuse',
 '-lfuse',
 '-pthread',

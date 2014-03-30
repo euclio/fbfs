@@ -1,11 +1,18 @@
 cmake_minimum_required(VERSION 2.6)
 
 project(fbfs)
-add_executable(fbfs fbfs.cpp)
 
 add_definitions(
     -std=c++11
+    -g
+    -Wall
 )
+
+file(GLOB_RECURSE SOURCES src/*.cpp)
+file(GLOB_RECURSE HEADERS include/*.h)
+include_directories("include")
+
+add_executable(fbfs ${SOURCES} ${HEADERS})
 
 # Configure FUSE
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/FindFUSE.cmake")
