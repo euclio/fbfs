@@ -1,3 +1,6 @@
 [submodule "third_party/curlcpp"]
 	path = third_party/curlcpp
 	url = https://github.com/JosephP91/curlcpp
+[submodule "third_party/JsonBox"]
+	path = third_party/JsonBox
+	url = https://github.com/anhero/JsonBox.git

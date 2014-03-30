@@ -11,3 +11,6 @@ add_definitions(
 
 add_subdirectory(third_party/curlcpp)
 include_directories(${CURLCPP_SOURCE_DIR}/include)
+
+add_subdirectory(third_party/JsonBox)
+include_directories(${JSONBOX_SOURCE_DIR}/include)
