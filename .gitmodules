@@ -1,0 +1,3 @@
+[submodule "third_party/curlcpp"]
+	path = third_party/curlcpp
+	url = https://github.com/JosephP91/curlcpp

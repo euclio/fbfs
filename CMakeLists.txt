@@ -8,3 +8,6 @@ add_definitions(
     -lfuse
     -pthread
 )
+
+add_subdirectory(third_party/curlcpp)
+include_directories(${CURLCPP_SOURCE_DIR}/include)
