@@ -1,6 +1,8 @@
 #include "FBGraph.h"
+#include "Browser.h"
 
 #include <cstdlib>
+#include <memory>
 #include <sstream>
 #include <string>
 
@@ -26,10 +28,6 @@ void FBGraph::login() {
            "client_id=" << CLIENT_ID <<
            "&redirect_uri=" << REDIRECT_URI;
 
-    // We are about to make a slightly evil call to system to open the default
-    // browser.
-    // It's OK because we are calling it with a constant string.
-    // TODO: Make opening the browser platform-independent
-    std::string command = "xdg-open '" + fb_connect_url.str() + "'";
-    std::system(command.c_str());
+    Browser browser;
+    browser.open(fb_connect_url.str());
 }
