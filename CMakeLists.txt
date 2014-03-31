@@ -8,6 +8,8 @@ add_definitions(
     -Wall
 )
 
+set(CMAKE_AUTOMOC ON)
+
 file(GLOB_RECURSE SOURCES src/*.cpp)
 file(GLOB_RECURSE HEADERS include/*.h)
 include_directories("include")

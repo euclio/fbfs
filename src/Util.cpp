@@ -21,8 +21,6 @@ bool confirm_yes(const std::string &prompt, bool assume_yes) {
             return assume_yes;
         }
 
-        std::cout << "RAN GETLINE" << std::endl;
-
         // Make the string lower case
         std::transform(response.begin(), response.end(), response.begin(), ::tolower);
     } while (!std::cin.fail() && response != "y" && response != "n");
