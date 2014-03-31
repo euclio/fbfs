@@ -14,13 +14,28 @@ static const std::string REDIRECT_URI = "https://www.facebook.com/connect/login_
 // Strings
 static const std::string NOT_LOGGED_IN = "You appear to be logged out of Facebook.";
 static const std::string ASK_OPEN_BROWSER = "Would you like to open a browser and log in?";
+static const std::string CANCELLED_LOGIN = "It looks like you cancelled the Facebook login. The program will now terminate.";
 
 bool FBGraph::is_logged_in() const {
     return logged_in;
 }
 
-void FBGraph::authenticate() {
+void FBGraph::parse_login_response(std::string scheme, std::string host,
+        std::string path, std::map<std::string, std::string> parameters,
+        std::string fragment) {
+    if (host != "www.facebook.com") {
+        return;
+    }
 
+    // Facebook followed the redirect URL
+    if (scheme + "://" + host + path == REDIRECT_URI) {
+        if (parameters["error_reason"] ==  "user_denied") {
+            logged_in = false;
+            std::cout << CANCELLED_LOGIN << std::endl;
+            // FIXME: Exit from FUSE cleanly
+            std::exit(EXIT_SUCCESS);
+        }
+    }
 }
 
 void FBGraph::login() {
@@ -42,7 +57,7 @@ void FBGraph::login() {
            "client_id=" << CLIENT_ID <<
            "&redirect_uri=" << REDIRECT_URI;
 
-    Browser browser;
+    Browser browser(*this);
 
     browser.open(fb_connect_url.str());
 }

@@ -1,12 +1,14 @@
 #include "Browser.h"
+#include "FBGraph.h"
 
 #include <iostream>
 
 #include <QObject>
 #include <QtGui>
+#include <QUrlQuery>
 #include <QWebView>
 
-Browser::Browser() {
+Browser::Browser(FBGraph &parent) : parent(parent) {
     int argc = 0;
     char** argv = nullptr;
 
@@ -14,7 +16,7 @@ Browser::Browser() {
     window = std::unique_ptr<QWidget>(new QWidget);
     browser = std::unique_ptr<QWebView>(new QWebView);
     QObject::connect(browser.get(), SIGNAL(urlChanged(QUrl)),
-                     this,          SLOT(url_changed(QUrl)));
+                     this,          SLOT(url_changed(const QUrl&)));
 }
 
 int Browser::open(std::string url) {
@@ -27,6 +29,21 @@ int Browser::open(std::string url) {
     return app->exec();
 }
 
-void Browser::url_changed(QUrl url) {
-    std::cout << "URL_CHANGED TO " << url.toString().toStdString() << std::endl;
+void Browser::url_changed(const QUrl &url) {
+    std::string scheme = url.scheme().toStdString();
+    std::string host = url.host().toStdString();
+    std::string path = url.path().toStdString();
+
+    // Convert the URL parameters into a map of strings
+    QUrlQuery query(url);
+    std::map<std::string, std::string> parameters;
+    for (auto item : query.queryItems()) {
+        std::string key = item.first.toStdString();
+        std::string value = item.second.toStdString();
+        parameters[key] = value;
+    }
+
+    std::string fragment = url.fragment().toStdString();
+
+    parent.parse_login_response(scheme, host, path, parameters, fragment);
 }
