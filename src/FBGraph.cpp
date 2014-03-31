@@ -2,6 +2,8 @@
 #include "Browser.h"
 #include "Util.h"
 
+#include <fuse.h>
+
 #include <cstdlib>
 #include <memory>
 #include <iostream>
@@ -32,7 +34,6 @@ void FBGraph::parse_login_response(std::string scheme, std::string host,
         if (parameters["error_reason"] ==  "user_denied") {
             logged_in = false;
             std::cout << CANCELLED_LOGIN << std::endl;
-            // FIXME: Exit from FUSE cleanly
             std::exit(EXIT_SUCCESS);
         }
     }

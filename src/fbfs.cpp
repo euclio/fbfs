@@ -1,14 +1,15 @@
 #define FUSE_USE_VERSION 26
 
+#include "FBGraph.h"
+#include "Util.h"
+
+#include <fuse.h>
+
 #include <cerrno>
 #include <cstring>
 #include <iostream>
 #include <string>
 #include <system_error>
-
-#include <fuse.h>
-
-#include "FBGraph.h"
 
 static const std::string hello_str = "Hello World!\n";
 static const std::string hello_path = "/hello";
@@ -98,6 +99,11 @@ void* fbfs_init(struct fuse_conn_info *ci) {
     FBGraph fb_graph;
 
     fb_graph.login();
+
+    if (!fb_graph.is_logged_in()) {
+        std::exit(EXIT_SUCCESS);
+    }
+
     return nullptr;
 }
 
@@ -111,8 +117,14 @@ void initialize_operations(fuse_operations& operations) {
     operations.init    = fbfs_init;
 }
 
+void call_fusermount() {
+    std::system("fusermount -u testdir");
+}
+
 int main(int argc, char *argv[]) {
     umask(0);
+
+    std::atexit(call_fusermount);
 
     initialize_operations(fbfs_oper);
 
