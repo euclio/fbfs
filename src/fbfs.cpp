@@ -11,6 +11,8 @@
 #include <string>
 #include <system_error>
 
+static const std::string LOGIN_ERROR = "You are not logged in, so the program cannot fetch your profile. Terminating.";
+
 static const std::string hello_str = "Hello World!\n";
 static const std::string hello_path = "/hello";
 
@@ -101,6 +103,7 @@ void* fbfs_init(struct fuse_conn_info *ci) {
     fb_graph.login();
 
     if (!fb_graph.is_logged_in()) {
+        std::cout << LOGIN_ERROR << std::endl;
         std::exit(EXIT_SUCCESS);
     }
 
