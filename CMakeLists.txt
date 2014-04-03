@@ -13,6 +13,10 @@ file(GLOB_RECURSE HEADERS include/*.h)
 include_directories("include")
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
+
+find_package(Boost REQUIRED)
+include_directories(${Boost_INCLUDE_DIRS})
+
 find_package(Qt5WebKit REQUIRED)
 find_package(Qt5Widgets REQUIRED)
 find_package(Qt5WebKitWidgets REQUIRED)

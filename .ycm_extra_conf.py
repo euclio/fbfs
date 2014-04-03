@@ -48,6 +48,7 @@ flags = [
 '/usr/include/fuse',
 '-lfuse',
 '-pthread',
+'-I', '/usr/include/boost',
 '-I', 'third_party/curlcpp/include',
 '-I', '/usr/include/qt',
 '-I', '/usr/include/qt/QtConcurrent',
