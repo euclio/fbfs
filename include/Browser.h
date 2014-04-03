@@ -22,6 +22,7 @@ class Browser : public QObject {
         FBGraph &parent;
     private slots:
         void url_changed(const QUrl&);
+        void ssl_error_handler(QNetworkReply*, const QList<QSslError> &errors);
 };
 
 #endif // BROWSER_H
