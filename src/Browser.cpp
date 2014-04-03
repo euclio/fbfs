@@ -65,7 +65,15 @@ void Browser::url_changed(const QUrl &url) {
 
     std::string fragment = url.fragment().toStdString();
 
-    parent.parse_login_response(scheme, host, path, parameters, fragment);
+    boost::optional<std::string> access_token = (
+        parent.parse_login_response(scheme, host, path, parameters, fragment));
+
+    if (access_token.is_initialized()) {
+        // We have a valid access token!
+        parent.set_access_token(access_token.get());
+        parent.set_logged_in(true);
+        app->exit();
+    }
 }
 
 void Browser::ssl_error_handler(QNetworkReply* qnr,
