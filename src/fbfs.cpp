@@ -12,6 +12,7 @@
 #include <system_error>
 
 static const std::string LOGIN_ERROR = "You are not logged in, so the program cannot fetch your profile. Terminating.";
+static const std::string LOGIN_SUCCESS = "You are now logged into Facebook.";
 
 static const std::string hello_str = "Hello World!\n";
 static const std::string hello_path = "/hello";
@@ -98,6 +99,7 @@ static int fbfs_read(const char *cpath, char *buf, size_t size, off_t offset,
 }
 
 void* fbfs_init(struct fuse_conn_info *ci) {
+    (void)ci;
     FBGraph fb_graph;
 
     fb_graph.login();
@@ -106,6 +108,8 @@ void* fbfs_init(struct fuse_conn_info *ci) {
         std::cout << LOGIN_ERROR << std::endl;
         std::exit(EXIT_SUCCESS);
     }
+
+    std::cout << LOGIN_SUCCESS << std::endl;
 
     return nullptr;
 }
