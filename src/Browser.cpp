@@ -3,17 +3,47 @@
 
 #include <iostream>
 
+#include <QFile>
 #include <QNetworkReply>
 #include <QObject>
 #include <QSslConfiguration>
-#include <QtGui>
+#include <QTextStream>
 #include <QUrlQuery>
 #include <QWebView>
+#include <QtDebug>
+#include <QtGui>
+
+void customMessageHandler(QtMsgType type, const QMessageLogContext &context,
+                          const QString &msg) {
+    (void)context;
+    QString txt;
+    switch (type) {
+        case QtDebugMsg:
+            txt = QString("Debug: %1").arg(msg);
+            break;
+        case QtWarningMsg:
+            txt = QString("Warning: %1").arg(msg);
+            break;
+        case QtCriticalMsg:
+            txt = QString("Critical: %1").arg(msg);
+            break;
+        case QtFatalMsg:
+            txt = QString("Fatal %1").arg(msg);
+            break;
+    }
+
+    QFile out_file("QtDebugLog.txt");
+    out_file.open(QIODevice::WriteOnly | QIODevice::Append);
+    QTextStream ts(&out_file);
+    ts << txt << endl;
+}
+
 
 Browser::Browser(FBGraph &parent) : parent(parent) {
     int argc = 0;
     char** argv = nullptr;
 
+    qInstallMessageHandler(customMessageHandler);
     app = std::unique_ptr<QApplication>(new QApplication(argc, argv));
     window = std::unique_ptr<QWidget>(new QWidget);
     browser = std::unique_ptr<QWebView>(new QWebView);

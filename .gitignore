@@ -29,6 +29,7 @@ testdir
 
 # Qt
 moc_*.cpp
+QtDebugLog.txt
 
 # CMake
 CMakeCache.txt
