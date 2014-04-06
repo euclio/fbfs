@@ -11,6 +11,7 @@
 #include <memory>
 #include <iostream>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 
 // Facebook URL parameters
@@ -47,20 +48,24 @@ static std::size_t write_callback(void *contents, std::size_t size,
     return real_size;
 }
 
-json_spirit::mObject FBGraph::get(const std::string &endpoint, const std::string &edge) {
-    std::string response = send_request(endpoint, edge);
+json_spirit::mObject FBGraph::get(const std::string &user_id,
+                                  const std::string &endpoint,
+                                  const std::string &edge) {
+    std::string response = send_request(user_id, endpoint, edge);
     return parse_response(response);
 }
 
-std::string FBGraph::send_request(const std::string& endpoint, const std::string &edge) {
+std::string FBGraph::send_request(const std::string &user_id,
+                                  const std::string &endpoint,
+                                  const std::string &edge) {
     curl::curl_easy request;
     std::string response;
 
+    // Construct the request URL
     std::ostringstream url_stream;
-    url_stream << FACEBOOK_GRAPH_URL << "/" << endpoint << "/" << edge <<
-        "?access_token=" << access_token;
-
-    std::cout << url_stream.str() << std::endl;
+    url_stream << FACEBOOK_GRAPH_URL << "/" <<
+        user_id << "/" << endpoint << "/" << edge << "?" <<
+        "access_token=" << access_token;
 
     request.add_option(curl::curl_pair<CURLoption,string>(CURLOPT_URL, url_stream.str()));
     request.add_option(curl::curl_pair<CURLoption,decltype(&write_callback)>(CURLOPT_WRITEFUNCTION, &write_callback));

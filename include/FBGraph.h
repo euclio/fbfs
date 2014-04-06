@@ -17,10 +17,12 @@ class FBGraph {
                 const std::string, const std::map<std::string, std::string>,
                 const std::string) const noexcept;
         void login();
-        json_spirit::mObject get(const std::string&, const std::string& = "");
+        json_spirit::mObject get(const std::string&, const std::string&,
+                                 const std::string& = "");
     private:
         json_spirit::mObject parse_response(const std::string&);
-        std::string send_request(const std::string&, const std::string& = "");
+        std::string send_request(const std::string&, const std::string&,
+                                 const std::string&);
         bool logged_in;
         std::string access_token;
 };

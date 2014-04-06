@@ -9,11 +9,13 @@
 #include <cerrno>
 #include <cstring>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <system_error>
 
 static const std::string LOGIN_ERROR = "You are not logged in, so the program cannot fetch your profile. Terminating.";
 static const std::string LOGIN_SUCCESS = "You are now logged into Facebook.";
+static const std::string PERMISSION_CHECK_ERROR = "Could not determine app permissions.";
 
 static const std::string hello_str = "Hello World!\n";
 static const std::string hello_path = "/hello";
@@ -25,7 +27,6 @@ static inline FBGraph* get_fb_graph() {
 static int fbfs_getattr(const char* cpath, struct stat *stbuf) {
     std::string path(cpath);
     std::error_condition result;
-
     std::memset(stbuf, 0, sizeof(struct stat));
 
     if (path == "/") {
@@ -51,14 +52,28 @@ static int fbfs_readdir(const char *cpath, void *buf, fuse_fill_dir_t filler,
     std::string path(cpath);
     std::error_condition result;
 
-    if (path != "/") {
-        result = std::errc::no_such_file_or_directory;
-        return -result.value();
-    }
+    if (path == "/") {
+        filler(buf, ".", NULL, 0);
+        filler(buf, "..", NULL, 0);
 
-    filler(buf, ".", NULL, 0);
-    filler(buf, "..", NULL, 0);
-    filler(buf, hello_path.c_str() + 1, NULL, 0);
+        json_spirit::mObject permissions_response = get_fb_graph()->get("me", "permissions");
+        if (!permissions_response.count("data")) {
+            std::cerr << PERMISSION_CHECK_ERROR << std::endl;
+            result = std::errc::network_unreachable;
+            return -result.value();
+        }
+
+        // Check
+        // https://developers.facebook.com/docs/facebook-login/permissions
+        // for JSON format
+        json_spirit::mObject permissions = permissions_response.at("data").get_array()[0].get_obj();
+        json_spirit::write(permissions, std::cout);
+        for (auto permission : permissions) {
+            if (permission.second.get_int()) {
+                filler(buf, permission.first.c_str(), NULL, 0);
+            }
+        }
+    }
 
     return 0;
 }
@@ -144,6 +159,5 @@ int main(int argc, char *argv[]) {
     std::atexit(call_fusermount);
 
     initialize_operations(fbfs_oper);
-
     return fuse_main(argc, argv, &fbfs_oper, NULL);
 }
