@@ -13,6 +13,9 @@
 #include <QtDebug>
 #include <QtGui>
 
+static const char *qt_argv[] = {"fbfs_browser", NULL};
+static int qt_argc = sizeof(qt_argv) / sizeof(char*) - 1;
+
 void customMessageHandler(QtMsgType type, const QMessageLogContext &context,
                           const QString &msg) {
     (void)context;
@@ -40,11 +43,8 @@ void customMessageHandler(QtMsgType type, const QMessageLogContext &context,
 
 
 Browser::Browser(FBGraph &parent) : parent(parent) {
-    int argc = 0;
-    char** argv = nullptr;
-
     qInstallMessageHandler(customMessageHandler);
-    app = std::unique_ptr<QApplication>(new QApplication(argc, argv));
+    app = std::unique_ptr<QApplication>(new QApplication(qt_argc, const_cast<char**>(qt_argv)));
     window = std::unique_ptr<QWidget>(new QWidget);
     browser = std::unique_ptr<QWebView>(new QWebView);
     QObject::connect(browser.get(), SIGNAL(urlChanged(QUrl)),
