@@ -35,6 +35,6 @@ QtDebugLog.txt
 CMakeCache.txt
 CMakeFiles
 Makefile
-cmake_install.cmake
+*.cmake
 install_manifest.txt
 *automoc*
