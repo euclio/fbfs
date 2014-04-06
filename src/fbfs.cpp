@@ -18,6 +18,10 @@ static const std::string LOGIN_SUCCESS = "You are now logged into Facebook.";
 static const std::string hello_str = "Hello World!\n";
 static const std::string hello_path = "/hello";
 
+static inline FBGraph* get_fb_graph() {
+    return static_cast<FBGraph*>(fuse_get_context()->private_data);
+}
+
 static int fbfs_getattr(const char* cpath, struct stat *stbuf) {
     std::string path(cpath);
     std::error_condition result;
@@ -101,18 +105,22 @@ static int fbfs_read(const char *cpath, char *buf, size_t size, off_t offset,
 
 void* fbfs_init(struct fuse_conn_info *ci) {
     (void)ci;
-    FBGraph fb_graph;
 
-    fb_graph.login();
+    FBGraph *fb_graph = new FBGraph();
 
-    if (!fb_graph.is_logged_in()) {
+    fb_graph->login();
+
+    if (!fb_graph->is_logged_in()) {
         std::cout << LOGIN_ERROR << std::endl;
         std::exit(EXIT_SUCCESS);
     }
 
     std::cout << LOGIN_SUCCESS << std::endl;
+    return fb_graph;
+}
 
-    return nullptr;
+void fbfs_destroy(void *private_data) {
+    delete static_cast<FBGraph*>(private_data);
 }
 
 static struct fuse_operations fbfs_oper;
@@ -123,6 +131,7 @@ void initialize_operations(fuse_operations& operations) {
     operations.open    = fbfs_open;
     operations.read    = fbfs_read;
     operations.init    = fbfs_init;
+    operations.destroy = fbfs_destroy;
 }
 
 void call_fusermount() {
