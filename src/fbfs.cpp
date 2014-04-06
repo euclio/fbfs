@@ -4,6 +4,7 @@
 #include "Util.h"
 
 #include <fuse.h>
+#include "json_spirit.h"
 
 #include <cerrno>
 #include <cstring>

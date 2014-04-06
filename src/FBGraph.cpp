@@ -6,7 +6,6 @@
 #include <curl_easy.h>
 #include <curl_pair.h>
 #include <fuse.h>
-#include <JsonBox/Value.h>
 
 #include <cstdlib>
 #include <memory>
@@ -48,10 +47,9 @@ static std::size_t write_callback(void *contents, std::size_t size,
     return real_size;
 }
 
-JsonBox::Value FBGraph::get(const std::string &endpoint, const std::string &edge) {
+json_spirit::mObject FBGraph::get(const std::string &endpoint, const std::string &edge) {
     std::string response = send_request(endpoint, edge);
-    JsonBox::Value json_reponse = parse_reponse(response);
-    return response;
+    return parse_response(response);
 }
 
 std::string FBGraph::send_request(const std::string& endpoint, const std::string &edge) {
@@ -72,10 +70,19 @@ std::string FBGraph::send_request(const std::string& endpoint, const std::string
     return response;
 }
 
-JsonBox::Value FBGraph::parse_reponse(const std::string &response) {
-    return JsonBox::Value(response);
-}
+json_spirit::mObject FBGraph::parse_response(const std::string &response) {
+    json_spirit::mValue response_json;
+    json_spirit::read(response, response_json);
+    json_spirit::mObject response_object = response_json.get_obj();
 
+    if (response_object.count("error")) {
+        std::string reason = (
+                response_object.at("error").get_obj().at("message").get_str());
+        throw std::logic_error(reason);
+    }
+
+    return response_object;
+}
 
 boost::optional<std::string> get_fragment_value(const std::string &fragment,
                                                 const std::string &key) {

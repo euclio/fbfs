@@ -1,9 +1,9 @@
 [submodule "third_party/curlcpp"]
 	path = third_party/curlcpp
 	url = https://github.com/JosephP91/curlcpp
-[submodule "third_party/JsonBox"]
-	path = third_party/JsonBox
-	url = https://github.com/anhero/JsonBox.git
 [submodule "cmake/Modules/FindFUSE.cmake"]
 	path = cmake/Modules/FindFUSE.cmake
 	url = https://github.com/julp/FindFUSE.cmake.git
+[submodule "third_party/json-spirit"]
+	path = third_party/json-spirit
+	url = https://git.gitorious.org/json-spirit/json-spirit.git

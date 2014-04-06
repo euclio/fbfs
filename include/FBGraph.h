@@ -2,10 +2,9 @@
 #define FBGRAPH_H
 
 #include <boost/optional.hpp>
+#include "json_spirit.h"
 
 #include <map>
-
-#include <JsonBox/Value.h>
 
 class FBGraph {
     public:
@@ -18,9 +17,9 @@ class FBGraph {
                 const std::string, const std::map<std::string, std::string>,
                 const std::string) const noexcept;
         void login();
-        JsonBox::Value get(const std::string&, const std::string& = "");
+        json_spirit::mObject get(const std::string&, const std::string& = "");
     private:
-        JsonBox::Value parse_reponse(const std::string&);
+        json_spirit::mObject parse_response(const std::string&);
         std::string send_request(const std::string&, const std::string& = "");
         bool logged_in;
         std::string access_token;

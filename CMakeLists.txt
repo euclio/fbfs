@@ -30,10 +30,10 @@ include_directories(${FUSE_INCLUDE_DIRS})
 add_subdirectory(third_party/curlcpp)
 include_directories(${CURLCPP_SOURCE_DIR}/include)
 
-add_subdirectory(third_party/JsonBox)
-include_directories(${JsonBox_SOURCE_DIR}/include)
+add_subdirectory(third_party/json-spirit)
+include_directories(${json_spirit_SOURCE_DIR}/json_spirit)
 
 add_executable(fbfs ${SOURCES} ${HEADERS})
-target_link_libraries(fbfs ${FUSE_LIBRARIES} JsonBox curlcpp)
+target_link_libraries(fbfs ${FUSE_LIBRARIES} json_spirit curlcpp)
 qt5_use_modules(fbfs WebKit Widgets WebKitWidgets)
 set_target_properties(fbfs PROPERTIES AUTOMOC TRUE)
