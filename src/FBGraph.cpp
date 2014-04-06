@@ -3,7 +3,10 @@
 #include "Util.h"
 
 #include <boost/optional.hpp>
+#include <curl_easy.h>
+#include <curl_pair.h>
 #include <fuse.h>
+#include <JsonBox/Value.h>
 
 #include <cstdlib>
 #include <memory>
@@ -15,6 +18,7 @@
 static const std::string CLIENT_ID = "732872016745752";
 static const std::string REDIRECT_URI = "https://www.facebook.com/connect/login_success.html";
 static const std::string RESPONSE_TYPE = "token";
+static const std::string FACEBOOK_GRAPH_URL = "https://graph.facebook.com";
 
 // Strings
 static const std::string NOT_LOGGED_IN = "You appear to be logged out of Facebook.";
@@ -32,9 +36,46 @@ void FBGraph::set_logged_in(const bool is_logged_in) noexcept {
     this->logged_in = is_logged_in;
 }
 
-void FBGraph::set_access_token(const std::string &access_token) noexcept {
-    this->access_token = access_token;
+void FBGraph::set_access_token(const std::string &token) noexcept {
+    access_token = token;
 }
+
+static std::size_t write_callback(void *contents, std::size_t size,
+                                  std::size_t nmemb, void *userdata) {
+    (void)userdata;
+    std::size_t real_size = size * nmemb;
+    static_cast<std::string*>(userdata)->append(static_cast<char*>(contents), real_size);
+    return real_size;
+}
+
+JsonBox::Value FBGraph::get(const std::string &endpoint, const std::string &edge) {
+    std::string response = send_request(endpoint, edge);
+    JsonBox::Value json_reponse = parse_reponse(response);
+    return response;
+}
+
+std::string FBGraph::send_request(const std::string& endpoint, const std::string &edge) {
+    curl::curl_easy request;
+    std::string response;
+
+    std::ostringstream url_stream;
+    url_stream << FACEBOOK_GRAPH_URL << "/" << endpoint << "/" << edge <<
+        "?access_token=" << access_token;
+
+    std::cout << url_stream.str() << std::endl;
+
+    request.add_option(curl::curl_pair<CURLoption,string>(CURLOPT_URL, url_stream.str()));
+    request.add_option(curl::curl_pair<CURLoption,decltype(&write_callback)>(CURLOPT_WRITEFUNCTION, &write_callback));
+    request.add_option(curl::curl_pair<CURLoption,std::string*>(CURLOPT_WRITEDATA, &response));
+    request.perform();
+
+    return response;
+}
+
+JsonBox::Value FBGraph::parse_reponse(const std::string &response) {
+    return JsonBox::Value(response);
+}
+
 
 boost::optional<std::string> get_fragment_value(const std::string &fragment,
                                                 const std::string &key) {
@@ -83,14 +124,7 @@ FBGraph::parse_login_response(const std::string scheme, const std::string host,
     // Parse the fragment to get the access token.
     // Ensure that the access token was found
     // TODO: Should verify whether the access token is valid or not
-    boost::optional<std::string> new_access_token = (
-            get_fragment_value(fragment, "access_token"));
-    if (!new_access_token.is_initialized()) {
-        // We couldn't find the access token.
-        return boost::optional<std::string>();
-    }
-
-    return boost::optional<std::string>(access_token);
+    return get_fragment_value(fragment, "access_token");
 }
 
 void FBGraph::login() {
