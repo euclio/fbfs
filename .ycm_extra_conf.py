@@ -50,6 +50,7 @@ flags = [
 '-pthread',
 '-I', '/usr/include/boost',
 '-I', 'third_party/curlcpp/include',
+'-I', 'third_party/JsonBox/include',
 '-I', '/usr/include/qt',
 '-I', '/usr/include/qt/QtConcurrent',
 '-I', '/usr/include/qt/QtCore',
