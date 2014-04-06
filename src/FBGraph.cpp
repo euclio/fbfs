@@ -139,6 +139,16 @@ FBGraph::parse_login_response(const std::string scheme, const std::string host,
     return get_fragment_value(fragment, "access_token");
 }
 
+std::string FBGraph::get_endpoint_for_permission(const std::string &permission) const {
+    if (permission == "basic_info") {
+        // Keep this endpoint name the same because it isn't really an endpoint
+        return permission;
+    }
+
+    std::size_t begin = permission.find("_") + 1;
+    return permission.substr(begin, permission.length() - begin);
+}
+
 void FBGraph::login() {
     if (is_logged_in()) {
         return;

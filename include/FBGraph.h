@@ -19,6 +19,7 @@ class FBGraph {
         void login();
         json_spirit::mObject get(const std::string&, const std::string&,
                                  const std::string& = "");
+        std::string get_endpoint_for_permission(const std::string&) const;
     private:
         json_spirit::mObject parse_response(const std::string&);
         std::string send_request(const std::string&, const std::string&,

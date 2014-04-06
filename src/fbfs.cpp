@@ -66,11 +66,18 @@ static int fbfs_readdir(const char *cpath, void *buf, fuse_fill_dir_t filler,
         // Check
         // https://developers.facebook.com/docs/facebook-login/permissions
         // for JSON format
-        json_spirit::mObject permissions = permissions_response.at("data").get_array()[0].get_obj();
-        json_spirit::write(permissions, std::cout);
+        json_spirit::mObject permissions = (
+                permissions_response.at("data").get_array()[0].get_obj());
         for (auto permission : permissions) {
+            if (permission.first == "installed") {
+                // Skip this permission, we know the app is installed
+                continue;
+            }
+
             if (permission.second.get_int()) {
-                filler(buf, permission.first.c_str(), NULL, 0);
+                std::string folder = (
+                        get_fb_graph()->get_endpoint_for_permission(permission.first));
+                filler(buf, folder.c_str(), NULL, 0);
             }
         }
     }
