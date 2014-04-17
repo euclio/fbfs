@@ -130,7 +130,17 @@ void* fbfs_init(struct fuse_conn_info *ci) {
 
     FBGraph *fb_graph = new FBGraph();
 
-    fb_graph->login();
+    // We will ask for both user and friend variants of these permissions.
+    // Refer to https://developers.facebook.com/docs/facebook-login/permissions
+    // to see what each permission requests.
+    std::vector<std::string> permissions = {
+        "events",
+        "likes",
+        "photos",
+        "status",
+    };
+
+    fb_graph->login(permissions);
 
     if (!fb_graph->is_logged_in()) {
         std::cout << LOGIN_ERROR << std::endl;

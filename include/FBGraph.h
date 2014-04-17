@@ -16,7 +16,7 @@ class FBGraph {
             parse_login_response(const std::string, const std::string,
                 const std::string, const std::map<std::string, std::string>,
                 const std::string) const noexcept;
-        void login();
+        void login(std::vector<std::string>&);
         json_spirit::mObject get(const std::string&, const std::string&,
                                  const std::string& = "");
         std::string get_endpoint_for_permission(const std::string&) const;

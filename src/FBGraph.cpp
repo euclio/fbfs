@@ -149,7 +149,7 @@ std::string FBGraph::get_endpoint_for_permission(const std::string &permission) 
     return permission.substr(begin, permission.length() - begin);
 }
 
-void FBGraph::login() {
+void FBGraph::login(std::vector<std::string> &permissions) {
     if (is_logged_in()) {
         return;
     }
@@ -167,7 +167,13 @@ void FBGraph::login() {
     fb_connect_url << "https://www.facebook.com/dialog/oauth?" <<
            "client_id=" << CLIENT_ID <<
            "&redirect_uri=" << REDIRECT_URI <<
-           "&response_type=" << RESPONSE_TYPE;
+           "&response_type=" << RESPONSE_TYPE <<
+           "&scope=" << "basic_info,";
+    for (auto permission : permissions) {
+        fb_connect_url <<
+            "user_" << permission << "," <<
+            "friends_" << permission << ",";
+    }
 
     Browser browser(*this);
 
