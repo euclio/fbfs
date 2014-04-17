@@ -3,8 +3,8 @@
 #include "Util.h"
 
 #include <boost/optional.hpp>
-#include <curl_easy.h>
-#include <curl_pair.h>
+#include <CurlEasy.h>
+#include <CurlPair.h>
 #include <fuse.h>
 
 #include <cstdlib>
@@ -58,7 +58,7 @@ json_spirit::mObject FBGraph::get(const std::string &user_id,
 std::string FBGraph::send_request(const std::string &user_id,
                                   const std::string &endpoint,
                                   const std::string &edge) {
-    curl::curl_easy request;
+    curl::CurlEasy request;
     std::string response;
 
     // Construct the request URL
@@ -67,9 +67,9 @@ std::string FBGraph::send_request(const std::string &user_id,
         user_id << "/" << endpoint << "/" << edge << "?" <<
         "access_token=" << access_token;
 
-    request.add_option(curl::curl_pair<CURLoption,string>(CURLOPT_URL, url_stream.str()));
-    request.add_option(curl::curl_pair<CURLoption,decltype(&write_callback)>(CURLOPT_WRITEFUNCTION, &write_callback));
-    request.add_option(curl::curl_pair<CURLoption,std::string*>(CURLOPT_WRITEDATA, &response));
+    request.addOption(curl::CurlPair<CURLoption,string>(CURLOPT_URL, url_stream.str()));
+    request.addOption(curl::CurlPair<CURLoption,decltype(&write_callback)>(CURLOPT_WRITEFUNCTION, &write_callback));
+    request.addOption(curl::CurlPair<CURLoption,std::string*>(CURLOPT_WRITEDATA, &response));
     request.perform();
 
     return response;
