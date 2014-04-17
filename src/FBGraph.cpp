@@ -26,7 +26,7 @@ static const std::string ASK_OPEN_BROWSER = "Would you like to open a browser an
 static const std::string CANCELLED_LOGIN = "Facebook has denied the request for your profile. Reason: ";
 static const std::string PROGRAM_TERMINATION = "The program will now terminate.";
 
-FBGraph::FBGraph() : logged_in(false) {};
+FBGraph::FBGraph() : logged_in(false), request_cache() {};
 
 bool FBGraph::is_logged_in() const {
     return logged_in;
@@ -50,9 +50,16 @@ static std::size_t write_callback(void *contents, std::size_t size,
 
 json_spirit::mObject FBGraph::get(const std::string &user_id,
                                   const std::string &endpoint,
-                                  const std::string &edge) {
-    std::string response = send_request(user_id, endpoint, edge);
-    return parse_response(response);
+                                  const std::string &edge,
+                                  const bool should_clear_cache) {
+
+    auto request = std::make_tuple(user_id, endpoint, edge);
+    if (should_clear_cache || !request_cache.count(request)) {
+        std::string response = send_request(user_id, endpoint, edge);
+        request_cache[request] = parse_response(response);
+    }
+
+    return request_cache.at(request);
 }
 
 std::string FBGraph::send_request(const std::string &user_id,

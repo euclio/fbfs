@@ -6,6 +6,8 @@
 
 #include <map>
 
+typedef std::map<std::tuple<std::string, std::string, std::string>, json_spirit::mObject> request_cache_t;
+
 class FBGraph {
     public:
         FBGraph();
@@ -18,7 +20,7 @@ class FBGraph {
                 const std::string) const noexcept;
         void login(std::vector<std::string>&);
         json_spirit::mObject get(const std::string&, const std::string&,
-                                 const std::string& = "");
+                                 const std::string& = "", const bool = false);
         std::string get_endpoint_for_permission(const std::string&) const;
     private:
         json_spirit::mObject parse_response(const std::string&);
@@ -26,6 +28,7 @@ class FBGraph {
                                  const std::string&);
         bool logged_in;
         std::string access_token;
+        request_cache_t request_cache;
 };
 
 #endif // FBGRAPH_H

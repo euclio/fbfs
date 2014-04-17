@@ -26,6 +26,15 @@ static inline FBGraph* get_fb_graph() {
     return static_cast<FBGraph*>(fuse_get_context()->private_data);
 }
 
+static inline std::string dirname(const std::string path) {
+    boost::filesystem::path p(path);
+    return p.parent_path().string();
+}
+
+static inline std::string basename(const std::string path) {
+    return boost::filesystem::basename(path);
+}
+
 static inline std::set<std::string> get_endpoints() {
     std::set<std::string> endpoints;
 
@@ -70,9 +79,7 @@ static int fbfs_getattr(const char* cpath, struct stat *stbuf) {
     }
 
     std::set<std::string> endpoints = get_endpoints();
-    std::string basename = boost::filesystem::basename(path);
-
-    if (endpoints.count(basename)) {
+    if (endpoints.count(basename(path))) {
         stbuf->st_mode = S_IFDIR | 0755;
         stbuf->st_nlink = 2;
     } else {
@@ -100,6 +107,25 @@ static int fbfs_readdir(const char *cpath, void *buf, fuse_fill_dir_t filler,
         for (auto endpoint : endpoints) {
             filler(buf, endpoint.c_str(), NULL, 0);
         }
+    } else if (endpoints.count(basename(path))) {
+        filler(buf, ".", NULL, 0);
+        filler(buf, "..", NULL, 0);
+
+        if (basename(path) == "friends") {
+            if (dirname(path) == "/") {
+                json_spirit::mObject friend_response = get_fb_graph()->get("me", "friends");
+                json_spirit::mArray friends = friend_response.at("data").get_array();
+                for (auto friend_obj : friends) {
+                    std::string name = friend_obj.get_obj().at("name").get_str();
+                    filler(buf, name.c_str(), NULL, 0);
+                }
+            } else {
+                // We are in a friends directory. We should either make the
+                // folder read-only, or a symlink to the user's friends.
+                // TODO: Implement
+            }
+        }
+
     }
 
     return 0;
