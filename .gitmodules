@@ -1,9 +1,11 @@
 [submodule "third_party/curlcpp"]
 	path = third_party/curlcpp
-	url = https://github.com/JosephP91/curlcpp
+    url = https://github.com/JosephP91/curlcpp
+    ignore = dirty
 [submodule "cmake/Modules/FindFUSE.cmake"]
 	path = cmake/Modules/FindFUSE.cmake
 	url = https://github.com/julp/FindFUSE.cmake.git
 [submodule "third_party/json-spirit"]
 	path = third_party/json-spirit
-	url = https://git.gitorious.org/json-spirit/json-spirit.git
+    url = https://git.gitorious.org/json-spirit/json-spirit.git
+    ignore = dirty
