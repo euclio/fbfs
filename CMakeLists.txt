@@ -14,7 +14,7 @@ include_directories("include")
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-find_package(Boost REQUIRED)
+find_package(Boost COMPONENTS system filesystem REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
 
 find_package(Qt5WebKit REQUIRED)
@@ -34,6 +34,12 @@ add_subdirectory(third_party/json-spirit)
 include_directories(${json_spirit_SOURCE_DIR}/json_spirit)
 
 add_executable(fbfs ${SOURCES} ${HEADERS})
-target_link_libraries(fbfs ${FUSE_LIBRARIES} json_spirit curlcpp)
+target_link_libraries(fbfs
+    ${FUSE_LIBRARIES}
+    json_spirit
+    curlcpp
+    ${Boost_FILESYSTEM_LIBRARY}
+    ${Boost_SYSTEM_LIBRARY}
+)
 qt5_use_modules(fbfs WebKit Widgets WebKitWidgets)
 set_target_properties(fbfs PROPERTIES AUTOMOC TRUE)
