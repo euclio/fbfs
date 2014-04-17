@@ -3,6 +3,7 @@
 #include "FBGraph.h"
 #include "Util.h"
 
+#include <boost/filesystem.hpp>
 #include <fuse.h>
 #include "json_spirit.h"
 
@@ -10,6 +11,7 @@
 #include <cstring>
 #include <iostream>
 #include <memory>
+#include <set>
 #include <string>
 #include <system_error>
 
@@ -24,6 +26,38 @@ static inline FBGraph* get_fb_graph() {
     return static_cast<FBGraph*>(fuse_get_context()->private_data);
 }
 
+static inline std::set<std::string> get_endpoints() {
+    std::set<std::string> endpoints;
+
+    json_spirit::mObject permissions_response = get_fb_graph()->get("me", "permissions");
+    if (!permissions_response.count("data")) {
+        std::cerr << PERMISSION_CHECK_ERROR << std::endl;
+        std::error_condition err = std::errc::network_unreachable;
+        errno = err.value();
+        return endpoints;
+    }
+
+    // Check
+    // https://developers.facebook.com/docs/facebook-login/permissions
+    // for JSON format
+    json_spirit::mObject permissions = (
+            permissions_response.at("data").get_array()[0].get_obj());
+    for (auto permission : permissions) {
+        if (permission.first == "installed") {
+            // Skip this permission, we know the app is installed
+            continue;
+        }
+
+        if (permission.second.get_int()) {
+            std::string endpoint = (
+                get_fb_graph()->get_endpoint_for_permission(permission.first));
+            endpoints.insert(endpoint);
+        }
+    }
+
+    return endpoints;
+}
+
 static int fbfs_getattr(const char* cpath, struct stat *stbuf) {
     std::string path(cpath);
     std::error_condition result;
@@ -32,10 +66,15 @@ static int fbfs_getattr(const char* cpath, struct stat *stbuf) {
     if (path == "/") {
         stbuf->st_mode = S_IFDIR | 0755;
         stbuf->st_nlink = 2;
-    } else if (path == hello_path) {
-        stbuf->st_mode = S_IFREG | 0444;
-        stbuf->st_nlink = 1;
-        stbuf->st_size = hello_str.length();
+        return 0;
+    }
+
+    std::set<std::string> endpoints = get_endpoints();
+    std::string basename = boost::filesystem::basename(path);
+
+    if (endpoints.count(basename)) {
+        stbuf->st_mode = S_IFDIR | 0755;
+        stbuf->st_nlink = 2;
     } else {
         result = std::errc::no_such_file_or_directory;
         return -result.value();
@@ -52,33 +91,14 @@ static int fbfs_readdir(const char *cpath, void *buf, fuse_fill_dir_t filler,
     std::string path(cpath);
     std::error_condition result;
 
+    std::set<std::string> endpoints = get_endpoints();
+
     if (path == "/") {
         filler(buf, ".", NULL, 0);
         filler(buf, "..", NULL, 0);
 
-        json_spirit::mObject permissions_response = get_fb_graph()->get("me", "permissions");
-        if (!permissions_response.count("data")) {
-            std::cerr << PERMISSION_CHECK_ERROR << std::endl;
-            result = std::errc::network_unreachable;
-            return -result.value();
-        }
-
-        // Check
-        // https://developers.facebook.com/docs/facebook-login/permissions
-        // for JSON format
-        json_spirit::mObject permissions = (
-                permissions_response.at("data").get_array()[0].get_obj());
-        for (auto permission : permissions) {
-            if (permission.first == "installed") {
-                // Skip this permission, we know the app is installed
-                continue;
-            }
-
-            if (permission.second.get_int()) {
-                std::string folder = (
-                        get_fb_graph()->get_endpoint_for_permission(permission.first));
-                filler(buf, folder.c_str(), NULL, 0);
-            }
+        for (auto endpoint : endpoints) {
+            filler(buf, endpoint.c_str(), NULL, 0);
         }
     }
 
