@@ -9,6 +9,7 @@
 #include "json_spirit.h"
 
 #include <cerrno>
+#include <ctime>
 #include <cstring>
 #include <iostream>
 #include <memory>
@@ -22,6 +23,10 @@ static const std::string PERMISSION_CHECK_ERROR = "Could not determine app permi
 
 static const std::string hello_str = "Hello World!\n";
 static const std::string hello_path = "/hello";
+
+static const std::string TIME_FILENAME_FORMAT = "%F-%H%M%S";
+
+static const size_t MAX_FILENAME_SIZE = 80;
 
 static inline FBGraph* get_fb_graph() {
     return static_cast<FBGraph*>(fuse_get_context()->private_data);
@@ -156,15 +161,22 @@ static int fbfs_readdir(const char *cpath, void *buf, fuse_fill_dir_t filler,
                 // TODO: Implement
             }
         } else if (basename(path) == "status") {
-            FBQuery query(node, "statuses", {
-                    std::make_pair("date_format", "U"),
-            });
+            FBQuery query(node, "statuses");
+            query.add_parameter("date_format", "U");
+            query.add_parameter("fields", "updated_time,message,id");
             json_spirit::mObject status_response = get_fb_graph()->get(query);
             json_spirit::mArray statuses = status_response.at("data").get_array();
 
-            for (auto status : statuses) {
-                int timestamp = status.get_obj().at("updated_time").get_int();
-                filler(buf, std::to_string(timestamp).c_str(), NULL, 0);
+            for (auto& status : statuses) {
+                if (!status.get_obj().count("message")) {
+                    // The status doesn't have a message
+                    continue;
+                }
+                time_t timestamp = status.get_obj().at("updated_time").get_int();
+                char time_string [MAX_FILENAME_SIZE];
+                std::strftime(time_string, 80, TIME_FILENAME_FORMAT.c_str(),
+                              std::localtime(&timestamp));
+                filler(buf, time_string, NULL, 0);
             }
         }
     }

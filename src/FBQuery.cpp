@@ -2,24 +2,9 @@
 
 #include <sstream>
 
-FBQuery::FBQuery(std::string node) :
-    FBQuery(node, "", "", parameters_t()) {};
-
-FBQuery::FBQuery(std::string node, parameters_t parameters) :
-    FBQuery(node, "", "", parameters) {};
-
-FBQuery::FBQuery(std::string node, std::string endpoint) :
-    FBQuery(node, endpoint, "", parameters_t()) {};
-
-FBQuery::FBQuery(std::string node, std::string endpoint, parameters_t parameters) :
-    FBQuery(node, endpoint, "", parameters) {};
-
-FBQuery::FBQuery(std::string node, std::string endpoint, std::string edge) :
-    FBQuery(node, endpoint, edge, parameters_t()) {};
-
-FBQuery::FBQuery(std::string node, std::string endpoint, std::string edge,
-                 parameters_t parameters) :
-    node(node), endpoint(endpoint), edge(edge), parameters(parameters) {};
+FBQuery::FBQuery(const std::string node, const std::string endpoint,
+                 const std::string edge) :
+    node(node), endpoint(endpoint), edge(edge) {};
 
 void FBQuery::add_parameter(std::string key, std::string value) {
     parameters.push_back(make_pair(key, value));
