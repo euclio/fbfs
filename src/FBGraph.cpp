@@ -88,13 +88,14 @@ std::string FBGraph::send_request(const FBQuery &query) {
         }
     }
 
-
     std::cout << url_stream.str() << std::endl;
 
     request.addOption(curl::CurlPair<CURLoption,string>(CURLOPT_URL, url_stream.str()));
     request.addOption(curl::CurlPair<CURLoption,decltype(&write_callback)>(CURLOPT_WRITEFUNCTION, &write_callback));
     request.addOption(curl::CurlPair<CURLoption,std::string*>(CURLOPT_WRITEDATA, &response));
     request.perform();
+
+    std::cout << response << std::endl;
 
     return response;
 }

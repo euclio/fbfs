@@ -155,8 +155,18 @@ static int fbfs_readdir(const char *cpath, void *buf, fuse_fill_dir_t filler,
                 // folder read-only, or a symlink to the user's friends.
                 // TODO: Implement
             }
-        }
+        } else if (basename(path) == "status") {
+            FBQuery query(node, "statuses", {
+                    std::make_pair("date_format", "U"),
+            });
+            json_spirit::mObject status_response = get_fb_graph()->get(query);
+            json_spirit::mArray statuses = status_response.at("data").get_array();
 
+            for (auto status : statuses) {
+                int timestamp = status.get_obj().at("updated_time").get_int();
+                filler(buf, std::to_string(timestamp).c_str(), NULL, 0);
+            }
+        }
     }
 
     return 0;
