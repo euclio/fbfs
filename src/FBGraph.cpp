@@ -1,4 +1,5 @@
 #include "FBGraph.h"
+#include "FBQuery.h"
 #include "Browser.h"
 #include "Util.h"
 
@@ -48,31 +49,47 @@ static std::size_t write_callback(void *contents, std::size_t size,
     return real_size;
 }
 
-json_spirit::mObject FBGraph::get(const std::string &user_id,
-                                  const std::string &endpoint,
-                                  const std::string &edge,
+json_spirit::mObject FBGraph::get(const FBQuery &query,
                                   const bool should_clear_cache) {
 
-    auto request = std::make_tuple(user_id, endpoint, edge);
+    std::string node = query.get_node();
+    std::string endpoint = query.get_endpoint();
+    std::string edge = query.get_edge();
+
+    // Cache the request
+    auto request = std::make_tuple(node, endpoint, edge);
     if (should_clear_cache || !request_cache.count(request)) {
-        std::string response = send_request(user_id, endpoint, edge);
+        std::string response = send_request(query);
         request_cache[request] = parse_response(response);
     }
 
     return request_cache.at(request);
 }
 
-std::string FBGraph::send_request(const std::string &user_id,
-                                  const std::string &endpoint,
-                                  const std::string &edge) {
+std::string FBGraph::send_request(const FBQuery &query) {
     curl::CurlEasy request;
     std::string response;
 
     // Construct the request URL
     std::ostringstream url_stream;
-    url_stream << FACEBOOK_GRAPH_URL << "/" <<
-        user_id << "/" << endpoint << "/" << edge << "?" <<
-        "access_token=" << access_token;
+    url_stream << FACEBOOK_GRAPH_URL << "/" << query.get_node();
+    if (!query.get_endpoint().empty()) {
+        url_stream << "/" << query.get_endpoint();
+    }
+
+    if (!query.get_edge().empty()) {
+        url_stream << "/" << query.get_edge();
+    }
+
+    url_stream << "?" << "access_token=" << access_token;
+    if (!query.get_parameters().empty()) {
+        for (auto parameter : query.get_parameters()) {
+            url_stream << "&" << parameter.first << "=" << parameter.second;
+        }
+    }
+
+
+    std::cout << url_stream.str() << std::endl;
 
     request.addOption(curl::CurlPair<CURLoption,string>(CURLOPT_URL, url_stream.str()));
     request.addOption(curl::CurlPair<CURLoption,decltype(&write_callback)>(CURLOPT_WRITEFUNCTION, &write_callback));

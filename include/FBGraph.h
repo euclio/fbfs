@@ -1,6 +1,8 @@
 #ifndef FBGRAPH_H
 #define FBGRAPH_H
 
+#include "FBQuery.h"
+
 #include <boost/optional.hpp>
 #include "json_spirit.h"
 
@@ -19,13 +21,11 @@ class FBGraph {
                 const std::string, const std::map<std::string, std::string>,
                 const std::string) const noexcept;
         void login(std::vector<std::string>&);
-        json_spirit::mObject get(const std::string&, const std::string&,
-                                 const std::string& = "", const bool = false);
+        json_spirit::mObject get(const FBQuery&, const bool = false);
         std::string get_endpoint_for_permission(const std::string&) const;
     private:
         json_spirit::mObject parse_response(const std::string&);
-        std::string send_request(const std::string&, const std::string&,
-                                 const std::string&);
+        std::string send_request(const FBQuery&);
         bool logged_in;
         std::string access_token;
         request_cache_t request_cache;

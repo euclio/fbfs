@@ -1,6 +1,7 @@
 #define FUSE_USE_VERSION 26
 
 #include "FBGraph.h"
+#include "FBQuery.h"
 #include "Util.h"
 
 #include <boost/filesystem.hpp>
@@ -38,7 +39,8 @@ static inline std::string basename(const std::string path) {
 static inline std::set<std::string> get_endpoints() {
     std::set<std::string> endpoints;
 
-    json_spirit::mObject permissions_response = get_fb_graph()->get("me", "permissions");
+    FBQuery query("me", "permissions");
+    json_spirit::mObject permissions_response = get_fb_graph()->get(query);
     if (!permissions_response.count("data")) {
         std::cerr << PERMISSION_CHECK_ERROR << std::endl;
         std::error_condition err = std::errc::network_unreachable;
@@ -80,6 +82,11 @@ static int fbfs_getattr(const char* cpath, struct stat *stbuf) {
 
     std::set<std::string> endpoints = get_endpoints();
     if (endpoints.count(basename(path))) {
+        // This is an endpoint
+        stbuf->st_mode = S_IFDIR | 0755;
+        stbuf->st_nlink = 2;
+    } else if (basename(dirname(path)) == "friends") {
+        // This is a directory representing a friend
         stbuf->st_mode = S_IFDIR | 0755;
         stbuf->st_nlink = 2;
     } else {
@@ -98,12 +105,12 @@ static int fbfs_readdir(const char *cpath, void *buf, fuse_fill_dir_t filler,
     std::string path(cpath);
     std::error_condition result;
 
+    filler(buf, ".", NULL, 0);
+    filler(buf, "..", NULL, 0);
+
     std::set<std::string> endpoints = get_endpoints();
 
     if (path == "/") {
-        filler(buf, ".", NULL, 0);
-        filler(buf, "..", NULL, 0);
-
         for (auto endpoint : endpoints) {
             filler(buf, endpoint.c_str(), NULL, 0);
         }
@@ -111,11 +118,35 @@ static int fbfs_readdir(const char *cpath, void *buf, fuse_fill_dir_t filler,
         filler(buf, ".", NULL, 0);
         filler(buf, "..", NULL, 0);
 
+        // Request the user's friends
+        FBQuery query("me", "friends");
+        json_spirit::mObject friend_response = get_fb_graph()->get(query);
+        json_spirit::mArray friends_list = friend_response.at("data").get_array();
+
+        std::string node;
+        if (dirname(path) == "/") {
+            node = "me";
+        } else {
+            // Determine the friends's ID by searching their name
+            for (auto friend_obj : friends_list) {
+                // FIXME: Friends may have the same name
+                std::string friend_name = basename(dirname(path));
+                if (friend_name == friend_obj.get_obj().at("name").get_str()) {
+                    node = friend_obj.get_obj().at("id").get_str();
+                    break;
+                }
+            }
+
+            // Couldn't find a friend with a matching name
+            if (node.empty()) {
+                result = std::errc::no_such_file_or_directory;
+                return -result.value();
+            }
+        }
+
         if (basename(path) == "friends") {
             if (dirname(path) == "/") {
-                json_spirit::mObject friend_response = get_fb_graph()->get("me", "friends");
-                json_spirit::mArray friends = friend_response.at("data").get_array();
-                for (auto friend_obj : friends) {
+                for (auto friend_obj : friends_list) {
                     std::string name = friend_obj.get_obj().at("name").get_str();
                     filler(buf, name.c_str(), NULL, 0);
                 }
