@@ -85,15 +85,21 @@ static int fbfs_getattr(const char* cpath, struct stat *stbuf) {
         return 0;
     }
 
+    if (basename(dirname(path)) == "friends") {
+        // This is a directory representing a friend
+        stbuf->st_mode = S_IFDIR | 0755;
+        stbuf->st_nlink = 2;
+        return 0;
+    }
+
     std::set<std::string> endpoints = get_endpoints();
     if (endpoints.count(basename(path))) {
         // This is an endpoint
         stbuf->st_mode = S_IFDIR | 0755;
         stbuf->st_nlink = 2;
-    } else if (basename(dirname(path)) == "friends") {
-        // This is a directory representing a friend
-        stbuf->st_mode = S_IFDIR | 0755;
-        stbuf->st_nlink = 2;
+    } else if (endpoints.count(basename(dirname(path)))) {
+        // This is a file inside an endpoint
+        stbuf->st_mode = S_IFREG | 0400;
     } else {
         result = std::errc::no_such_file_or_directory;
         return -result.value();
