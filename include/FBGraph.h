@@ -8,7 +8,10 @@
 
 #include <map>
 
-typedef std::map<std::tuple<std::string, std::string, std::string>, json_spirit::mObject> request_cache_t;
+typedef std::map<
+    std::tuple<std::string, std::string, std::string,
+        std::vector<std::pair<std::string, std::string>>>,
+    json_spirit::mObject> request_cache_t;
 
 class FBGraph {
     public:

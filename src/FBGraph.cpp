@@ -55,9 +55,10 @@ json_spirit::mObject FBGraph::get(const FBQuery &query,
     std::string node = query.get_node();
     std::string endpoint = query.get_endpoint();
     std::string edge = query.get_edge();
+    auto parameters = query.get_parameters();
 
     // Cache the request
-    auto request = std::make_tuple(node, endpoint, edge);
+    auto request = std::make_tuple(node, endpoint, edge, parameters);
     if (should_clear_cache || !request_cache.count(request)) {
         std::string response = send_request(query);
         request_cache[request] = parse_response(response);
