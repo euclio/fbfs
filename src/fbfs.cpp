@@ -226,7 +226,7 @@ static int fbfs_read(const char *cpath, char *buf, size_t size, off_t offset,
     return size;
 }
 
-void* fbfs_init(struct fuse_conn_info *ci) {
+static void* fbfs_init(struct fuse_conn_info *ci) {
     (void)ci;
 
     FBGraph *fb_graph = new FBGraph();
@@ -252,7 +252,7 @@ void* fbfs_init(struct fuse_conn_info *ci) {
     return fb_graph;
 }
 
-void fbfs_destroy(void *private_data) {
+static void fbfs_destroy(void *private_data) {
     delete static_cast<FBGraph*>(private_data);
 }
 
