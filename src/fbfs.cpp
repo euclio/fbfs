@@ -130,8 +130,9 @@ static int fbfs_readdir(const char *cpath, void *buf, fuse_fill_dir_t filler,
     filler(buf, "..", NULL, 0);
 
     std::set<std::string> endpoints = get_endpoints();
+    std::set<std::string> friends = get_fb_graph()->get_friends();
 
-    if (path == "/") {
+    if (path == "/" || friends.count(basename(path))) {
         for (auto endpoint : endpoints) {
             filler(buf, endpoint.c_str(), NULL, 0);
         }
@@ -146,8 +147,7 @@ static int fbfs_readdir(const char *cpath, void *buf, fuse_fill_dir_t filler,
             node = "me";
         } else {
             std::string friend_name = basename(dirname(path));
-            int uid = get_fb_graph()->get_uid_from_name(friend_name);
-            node = std::to_string(uid);
+            node = get_fb_graph()->get_uid_from_name(friend_name);
         }
 
         if (basename(path) == "friends") {

@@ -102,6 +102,7 @@ std::string FBGraph::send_request(const FBQuery &query) {
 }
 
 json_spirit::mObject FBGraph::parse_response(const std::string &response) {
+    std::cout << response << std::endl;
     json_spirit::mValue response_json;
     json_spirit::read(response, response_json);
     json_spirit::mObject response_object = response_json.get_obj();
@@ -169,19 +170,36 @@ std::string FBGraph::get_endpoint_for_permission(const std::string &permission) 
     return permission.substr(begin, permission.length() - begin);
 }
 
-int FBGraph::get_uid_from_name(std::string name) {
+std::string FBGraph::get_uid_from_name(std::string name) {
     std::string fql = "SELECT id FROM profile WHERE id IN \
                       (SELECT uid2 FROM friend WHERE uid1 = me()) \
                        AND name = \"" + name + "\"";
     json_spirit::mObject response = fql_get(fql);
 
     // FIXME: Code assumes unique names for now
-    return response.at("data").get_array()[0].get_int();
+    return response.at("data").get_array()[0].get_obj().at("id").get_str();
 }
+
+std::set<std::string> FBGraph::get_friends() {
+    std::string fql = "SELECT name FROM profile WHERE id IN \
+                       (SELECT uid2 FROM friend WHERE uid1 = me())";
+    json_spirit::mObject response = fql_get(fql);
+    json_spirit::mArray friends_list = response.at("data").get_array();
+    std::set<std::string> friends;
+    for (auto &friend_name : friends_list) {
+        friends.insert(friend_name.get_obj().at("name").get_str());
+    }
+
+    return friends;
+}
+
 
 json_spirit::mObject FBGraph::fql_get(const std::string &fql_query) {
     FBQuery query("fql");
-    query.add_parameter("q", fql_query);
+    std::string escaped_fql_query = fql_query;
+    curl::CurlEasy curl_easy;
+    curl_easy.escape(escaped_fql_query);
+    query.add_parameter("q", escaped_fql_query);
     return parse_response(send_request(query));
 }
 

@@ -7,6 +7,7 @@
 #include "json_spirit.h"
 
 #include <map>
+#include <set>
 
 typedef std::map<
     std::tuple<std::string, std::string, std::string,
@@ -27,7 +28,8 @@ class FBGraph {
         json_spirit::mObject get(const FBQuery&, const bool = false);
         std::string get_endpoint_for_permission(const std::string&) const;
         json_spirit::mObject fql_get(const std::string&);
-        int get_uid_from_name(std::string name);
+        std::string get_uid_from_name(std::string name);
+        std::set<std::string> get_friends();
     private:
         json_spirit::mObject parse_response(const std::string&);
         std::string send_request(const FBQuery&);
