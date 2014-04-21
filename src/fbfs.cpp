@@ -21,13 +21,6 @@ static const std::string LOGIN_ERROR = "You are not logged in, so the program ca
 static const std::string LOGIN_SUCCESS = "You are now logged into Facebook.";
 static const std::string PERMISSION_CHECK_ERROR = "Could not determine app permissions.";
 
-static const std::string hello_str = "Hello World!\n";
-static const std::string hello_path = "/hello";
-
-static const std::string TIME_FILENAME_FORMAT = "%F-%H%M%S";
-
-static const size_t MAX_FILENAME_SIZE = 80;
-
 static inline FBGraph* get_fb_graph() {
     return static_cast<FBGraph*>(fuse_get_context()->private_data);
 }
@@ -100,6 +93,23 @@ static int fbfs_getattr(const char* cpath, struct stat *stbuf) {
     } else if (endpoints.count(basename(dirname(path)))) {
         // This is a file inside an endpoint
         stbuf->st_mode = S_IFREG | 0400;
+        if (basename(dirname(path)) == "status") {
+            // Store the date in the file
+            FBQuery query(basename(path));
+            query.add_parameter("date_format", "U");
+            query.add_parameter("fields", "message,updated_time");
+            json_spirit::mObject status_response = get_fb_graph()->get(query);
+            if (status_response.count("error")) {
+                result = std::errc::no_such_file_or_directory;
+                return -result.value();
+            }
+
+            const time_t updated_time = status_response.at("updated_time").get_int();
+            timespec time;
+            time.tv_sec = updated_time;
+            stbuf->st_mtim = time;
+            stbuf->st_size = status_response.at("message").get_str().length();
+        }
     } else {
         result = std::errc::no_such_file_or_directory;
         return -result.value();
@@ -126,9 +136,6 @@ static int fbfs_readdir(const char *cpath, void *buf, fuse_fill_dir_t filler,
             filler(buf, endpoint.c_str(), NULL, 0);
         }
     } else if (endpoints.count(basename(path))) {
-        filler(buf, ".", NULL, 0);
-        filler(buf, "..", NULL, 0);
-
         // Request the user's friends
         FBQuery query("me", "friends");
         json_spirit::mObject friend_response = get_fb_graph()->get(query);
@@ -178,11 +185,8 @@ static int fbfs_readdir(const char *cpath, void *buf, fuse_fill_dir_t filler,
                     // The status doesn't have a message
                     continue;
                 }
-                time_t timestamp = status.get_obj().at("updated_time").get_int();
-                char time_string [MAX_FILENAME_SIZE];
-                std::strftime(time_string, 80, TIME_FILENAME_FORMAT.c_str(),
-                              std::localtime(&timestamp));
-                filler(buf, time_string, NULL, 0);
+                std::string id = status.get_obj().at("id").get_str();
+                filler(buf, id.c_str(), NULL, 0);
             }
         }
     }
@@ -194,10 +198,14 @@ static int fbfs_open(const char *cpath, struct fuse_file_info *fi) {
     std::string path(cpath);
     std::error_condition result;
 
-    if (path != hello_path) {
-        result = std::errc::no_such_file_or_directory;
-        return -result.value();
+    std::set<std::string> endpoints = get_endpoints();
+
+    std::string parent_folder = basename(dirname(path));
+
+    if (endpoints.count(parent_folder)) {
+        // The file is in an endpoint directory, so we can open it
     }
+
     if ((fi->flags & 3) != O_RDONLY) {
         result = std::errc::permission_denied;
         return -result.value();
@@ -207,22 +215,22 @@ static int fbfs_open(const char *cpath, struct fuse_file_info *fi) {
 }
 
 static int fbfs_read(const char *cpath, char *buf, size_t size, off_t offset,
-                      struct fuse_file_info *fi) {
+                     struct fuse_file_info *fi) {
     (void)fi;
     std::string path(cpath);
     std::error_condition result;
 
-    if (path != hello_path) {
-        result = std::errc::no_such_file_or_directory;
-        return -result.value();
-    }
+    FBQuery query(basename(path));
+    query.add_parameter("fields", "message");
+    json_spirit::mObject status_response = get_fb_graph()->get(query);
+    std::string message = status_response.at("message").get_str();
 
-    if (static_cast<size_t>(offset) < hello_str.length()) {
-        if (offset + size > hello_str.length()) {
-            size = hello_str.length() - offset;
+    if (static_cast<unsigned>(offset) < message.length()) {
+        if (offset + size > message.length()) {
+            size = message.length() - offset;
         }
 
-        std::memcpy(buf, hello_str.c_str() + offset, size);
+        std::memcpy(buf, message.c_str() + offset, size);
     } else {
         size = 0;
     }

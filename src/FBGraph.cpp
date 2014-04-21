@@ -106,12 +106,6 @@ json_spirit::mObject FBGraph::parse_response(const std::string &response) {
     json_spirit::read(response, response_json);
     json_spirit::mObject response_object = response_json.get_obj();
 
-    if (response_object.count("error")) {
-        std::string reason = (
-                response_object.at("error").get_obj().at("message").get_str());
-        throw std::logic_error(reason);
-    }
-
     return response_object;
 }
 
