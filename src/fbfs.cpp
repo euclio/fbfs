@@ -259,6 +259,8 @@ static void fbfs_destroy(void *private_data) {
 static struct fuse_operations fbfs_oper;
 
 void initialize_operations(fuse_operations& operations) {
+    std::memset((void *)&operations, 0, sizeof(operations));
+
     operations.getattr = fbfs_getattr;
     operations.readdir = fbfs_readdir;
     operations.open    = fbfs_open;
