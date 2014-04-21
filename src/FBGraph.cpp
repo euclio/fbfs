@@ -169,6 +169,22 @@ std::string FBGraph::get_endpoint_for_permission(const std::string &permission) 
     return permission.substr(begin, permission.length() - begin);
 }
 
+int FBGraph::get_uid_from_name(std::string name) {
+    std::string fql = "SELECT id FROM profile WHERE id IN \
+                      (SELECT uid2 FROM friend WHERE uid1 = me()) \
+                       AND name = \"" + name + "\"";
+    json_spirit::mObject response = fql_get(fql);
+
+    // FIXME: Code assumes unique names for now
+    return response.at("data").get_array()[0].get_int();
+}
+
+json_spirit::mObject FBGraph::fql_get(const std::string &fql_query) {
+    FBQuery query("fql");
+    query.add_parameter("q", fql_query);
+    return parse_response(send_request(query));
+}
+
 void FBGraph::login(std::vector<std::string> &permissions) {
     if (is_logged_in()) {
         return;

@@ -145,21 +145,9 @@ static int fbfs_readdir(const char *cpath, void *buf, fuse_fill_dir_t filler,
         if (dirname(path) == "/") {
             node = "me";
         } else {
-            // Determine the friends's ID by searching their name
-            for (auto friend_obj : friends_list) {
-                // FIXME: Friends may have the same name
-                std::string friend_name = basename(dirname(path));
-                if (friend_name == friend_obj.get_obj().at("name").get_str()) {
-                    node = friend_obj.get_obj().at("id").get_str();
-                    break;
-                }
-            }
-
-            // Couldn't find a friend with a matching name
-            if (node.empty()) {
-                result = std::errc::no_such_file_or_directory;
-                return -result.value();
-            }
+            std::string friend_name = basename(dirname(path));
+            int uid = get_fb_graph()->get_uid_from_name(friend_name);
+            node = std::to_string(uid);
         }
 
         if (basename(path) == "friends") {
