@@ -8,7 +8,7 @@ typedef std::vector<std::pair<std::string, std::string>> parameters_t;
 
 class FBQuery {
     public:
-        FBQuery(std::string, std::string = "", std::string = "");
+        explicit FBQuery(std::string, std::string = "", std::string = "");
         std::string get_node() const;
         std::string get_endpoint() const;
         std::string get_edge() const;
