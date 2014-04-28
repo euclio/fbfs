@@ -26,12 +26,12 @@ static inline FBGraph* get_fb_graph() {
     return static_cast<FBGraph*>(fuse_get_context()->private_data);
 }
 
-static inline std::string dirname(const std::string path) {
+static inline std::string dirname(const std::string &path) {
     boost::filesystem::path p(path);
     return p.parent_path().string();
 }
 
-static inline std::string basename(const std::string path) {
+static inline std::string basename(const std::string &path) {
     return boost::filesystem::basename(path);
 }
 
@@ -66,6 +66,24 @@ static inline std::set<std::string> get_endpoints() {
     }
 
     return endpoints;
+}
+
+static inline std::string get_node_from_path(const std::string &path) {
+    std::string p(path);
+    std::string node;
+
+    if (basename(p) == POST_FILE_NAME) {
+        p = dirname(p);
+    }
+
+    if (dirname(p) == "/") {
+        node = "me";
+    } else {
+        std::string friend_name = basename(dirname(p));
+        node = get_fb_graph()->get_uid_from_name(friend_name);
+    }
+
+    return node;
 }
 
 static int fbfs_getattr(const char* cpath, struct stat *stbuf) {
@@ -149,14 +167,7 @@ static int fbfs_readdir(const char *cpath, void *buf, fuse_fill_dir_t filler,
         json_spirit::mObject friend_response = get_fb_graph()->get(query);
         json_spirit::mArray friends_list = friend_response.at("data").get_array();
 
-        std::string node;
-        if (dirname(path) == "/") {
-            node = "me";
-        } else {
-            std::string friend_name = basename(dirname(path));
-            node = get_fb_graph()->get_uid_from_name(friend_name);
-        }
-
+        std::string node = get_node_from_path(path);
         if (basename(path) == "friends") {
             if (dirname(path) == "/") {
                 for (auto friend_obj : friends_list) {
@@ -175,6 +186,10 @@ static int fbfs_readdir(const char *cpath, void *buf, fuse_fill_dir_t filler,
             json_spirit::mObject status_response = get_fb_graph()->get(query);
             json_spirit::mArray statuses = status_response.at("data").get_array();
 
+            if (dirname(path) == "/") {
+                filler(buf, POST_FILE_NAME.c_str(), NULL, 0);
+            }
+
             for (auto& status : statuses) {
                 if (!status.get_obj().count("message")) {
                     // The status doesn't have a message
@@ -183,7 +198,6 @@ static int fbfs_readdir(const char *cpath, void *buf, fuse_fill_dir_t filler,
                 std::string id = status.get_obj().at("id").get_str();
                 filler(buf, id.c_str(), NULL, 0);
             }
-            filler(buf, POST_FILE_NAME.c_str(), NULL, 0);
         }
     }
 
@@ -215,6 +229,7 @@ static int fbfs_truncate(const char *cpath, off_t size) {
 static int fbfs_write(const char *cpath, const char *buf, size_t size,
                       off_t offset, struct fuse_file_info *fi) {
     (void)fi;
+    std::error_condition result;
     std::string path(cpath);
     std::set<std::string> endpoints = get_endpoints();
 
@@ -226,11 +241,17 @@ static int fbfs_write(const char *cpath, const char *buf, size_t size,
         std::string endpoint = basename(dirname(path));
 
         if (endpoint == "status") {
+            // TODO: Allow writes to friend's walls as well. Unfortunately, it
+            // is not possible to post directly using the Facebook API.
+            // Instead, we will have to open a feed dialog.
+            // https://developers.facebook.com/docs/sharing/reference/feed-dialog
             FBQuery query("me", "feed");
             query.add_parameter("message", data);
             json_spirit::mObject response = get_fb_graph()->post(query);
             if (response.count("error")) {
-                throw response.at("error").get_obj().at("message").get_str();
+                result = std::errc::operation_not_permitted;
+                std::cerr << response.at("error").get_obj().at("message").get_str();
+                return -result.value();
             }
 
             return data.size();
