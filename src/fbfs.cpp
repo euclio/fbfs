@@ -20,6 +20,7 @@
 static const std::string LOGIN_ERROR = "You are not logged in, so the program cannot fetch your profile. Terminating.";
 static const std::string LOGIN_SUCCESS = "You are now logged into Facebook.";
 static const std::string PERMISSION_CHECK_ERROR = "Could not determine app permissions.";
+static const std::string POST_FILE_NAME = "post";
 
 static inline FBGraph* get_fb_graph() {
     return static_cast<FBGraph*>(fuse_get_context()->private_data);
@@ -82,6 +83,12 @@ static int fbfs_getattr(const char* cpath, struct stat *stbuf) {
         // This is a directory representing a friend
         stbuf->st_mode = S_IFDIR | 0755;
         stbuf->st_nlink = 2;
+        return 0;
+    }
+
+    if (basename(path) == POST_FILE_NAME) {
+        stbuf->st_mode = S_IFREG | 0200;
+        stbuf->st_size = 0;
         return 0;
     }
 
@@ -176,6 +183,7 @@ static int fbfs_readdir(const char *cpath, void *buf, fuse_fill_dir_t filler,
                 std::string id = status.get_obj().at("id").get_str();
                 filler(buf, id.c_str(), NULL, 0);
             }
+            filler(buf, POST_FILE_NAME.c_str(), NULL, 0);
         }
     }
 
@@ -190,13 +198,43 @@ static int fbfs_open(const char *cpath, struct fuse_file_info *fi) {
 
     std::string parent_folder = basename(dirname(path));
 
-    if (endpoints.count(parent_folder)) {
-        // The file is in an endpoint directory, so we can open it
-    }
-
-    if ((fi->flags & 3) != O_RDONLY) {
+    if (fi->flags & O_RDONLY) {
         result = std::errc::permission_denied;
         return -result.value();
+    }
+
+    return 0;
+}
+
+static int fbfs_truncate(const char *cpath, off_t size) {
+    (void)cpath;
+    (void)size;
+    return 0;
+}
+
+static int fbfs_write(const char *cpath, const char *buf, size_t size,
+                      off_t offset, struct fuse_file_info *fi) {
+    (void)fi;
+    std::string path(cpath);
+    std::set<std::string> endpoints = get_endpoints();
+
+    if (endpoints.count(basename(dirname(path)))) {
+        // We are in an endpoint directory, so we are able to write the file
+        const char *start = buf + offset;
+        std::string data(start, size);
+        // Determine which endpoint we are in
+        std::string endpoint = basename(dirname(path));
+
+        if (endpoint == "status") {
+            FBQuery query("me", "feed");
+            query.add_parameter("message", data);
+            json_spirit::mObject response = get_fb_graph()->post(query);
+            if (response.count("error")) {
+                throw response.at("error").get_obj().at("message").get_str();
+            }
+
+            return data.size();
+        }
     }
 
     return 0;
@@ -235,13 +273,14 @@ static void* fbfs_init(struct fuse_conn_info *ci) {
     // Refer to https://developers.facebook.com/docs/facebook-login/permissions
     // to see what each permission requests.
     std::vector<std::string> permissions = {
-        "events",
-        "likes",
-        "photos",
         "status",
     };
 
-    fb_graph->login(permissions);
+    std::vector<std::string> extended_permissions = {
+        "publish_actions",
+    };
+
+    fb_graph->login(permissions, extended_permissions);
 
     if (!fb_graph->is_logged_in()) {
         std::cout << LOGIN_ERROR << std::endl;
@@ -259,14 +298,16 @@ static void fbfs_destroy(void *private_data) {
 static struct fuse_operations fbfs_oper;
 
 void initialize_operations(fuse_operations& operations) {
-    std::memset((void *)&operations, 0, sizeof(operations));
+    std::memset(static_cast<void*>(&operations), 0, sizeof(operations));
 
-    operations.getattr = fbfs_getattr;
-    operations.readdir = fbfs_readdir;
-    operations.open    = fbfs_open;
-    operations.read    = fbfs_read;
-    operations.init    = fbfs_init;
-    operations.destroy = fbfs_destroy;
+    operations.getattr  = fbfs_getattr;
+    operations.readdir  = fbfs_readdir;
+    operations.open     = fbfs_open;
+    operations.read     = fbfs_read;
+    operations.init     = fbfs_init;
+    operations.destroy  = fbfs_destroy;
+    operations.truncate = fbfs_truncate;
+    operations.write    = fbfs_write;
 }
 
 void call_fusermount() {

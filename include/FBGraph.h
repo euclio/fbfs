@@ -24,15 +24,16 @@ class FBGraph {
             parse_login_response(const std::string, const std::string,
                 const std::string, const std::map<std::string, std::string>,
                 const std::string) const noexcept;
-        void login(std::vector<std::string>&);
+        void login(std::vector<std::string>&, std::vector<std::string>&);
         json_spirit::mObject get(const FBQuery&, const bool = false);
+        json_spirit::mObject post(const FBQuery&);
         std::string get_endpoint_for_permission(const std::string&) const;
         json_spirit::mObject fql_get(const std::string&);
         std::string get_uid_from_name(std::string name);
         std::set<std::string> get_friends();
     private:
         json_spirit::mObject parse_response(const std::string&);
-        std::string send_request(const FBQuery&);
+        std::string send_request(const std::string&, const FBQuery&);
         bool logged_in;
         std::string access_token;
         request_cache_t request_cache;

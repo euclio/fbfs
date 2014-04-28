@@ -5,6 +5,7 @@
 
 #include <boost/optional.hpp>
 #include <CurlEasy.h>
+#include <CurlHttpPost.h>
 #include <CurlPair.h>
 #include <fuse.h>
 
@@ -60,14 +61,18 @@ json_spirit::mObject FBGraph::get(const FBQuery &query,
     // Cache the request
     auto request = std::make_tuple(node, endpoint, edge, parameters);
     if (should_clear_cache || !request_cache.count(request)) {
-        std::string response = send_request(query);
+        std::string response = send_request("GET", query);
         request_cache[request] = parse_response(response);
     }
 
     return request_cache.at(request);
 }
 
-std::string FBGraph::send_request(const FBQuery &query) {
+json_spirit::mObject FBGraph::post(const FBQuery &query) {
+    return parse_response(send_request("POST", query));
+}
+
+std::string FBGraph::send_request(const std::string &type, const FBQuery &query) {
     curl::CurlEasy request;
     std::string response;
 
@@ -85,15 +90,27 @@ std::string FBGraph::send_request(const FBQuery &query) {
     url_stream << "?" << "access_token=" << access_token;
     if (!query.get_parameters().empty()) {
         for (auto parameter : query.get_parameters()) {
-            url_stream << "&" << parameter.first << "=" << parameter.second;
+            std::string key = parameter.first;
+            std::string value = parameter.second;
+            request.escape(key);
+            request.escape(value);
+
+            url_stream << "&" << key << "=" << value;
         }
     }
 
-    std::cout << url_stream.str() << std::endl;
+    std::string url = url_stream.str();
 
-    request.addOption(curl::CurlPair<CURLoption,string>(CURLOPT_URL, url_stream.str()));
-    request.addOption(curl::CurlPair<CURLoption,decltype(&write_callback)>(CURLOPT_WRITEFUNCTION, &write_callback));
-    request.addOption(curl::CurlPair<CURLoption,std::string*>(CURLOPT_WRITEDATA, &response));
+    std::cout << url << std::endl;
+
+    if (type == "POST") {
+        CurlHttpPost post;
+        request.addOption(CurlPair<CURLoption,CurlHttpPost>(CURLOPT_HTTPPOST, post));
+    }
+
+    request.addOption(CurlPair<CURLoption,string>(CURLOPT_URL, url));
+    request.addOption(CurlPair<CURLoption,decltype(&write_callback)>(CURLOPT_WRITEFUNCTION, &write_callback));
+    request.addOption(CurlPair<CURLoption,std::string*>(CURLOPT_WRITEDATA, &response));
     request.perform();
 
     std::cout << response << std::endl;
@@ -196,14 +213,12 @@ std::set<std::string> FBGraph::get_friends() {
 
 json_spirit::mObject FBGraph::fql_get(const std::string &fql_query) {
     FBQuery query("fql");
-    std::string escaped_fql_query = fql_query;
-    curl::CurlEasy curl_easy;
-    curl_easy.escape(escaped_fql_query);
-    query.add_parameter("q", escaped_fql_query);
-    return parse_response(send_request(query));
+    query.add_parameter("q", fql_query);
+    return parse_response(send_request("GET", query));
 }
 
-void FBGraph::login(std::vector<std::string> &permissions) {
+void FBGraph::login(std::vector<std::string> &permissions,
+                    std::vector<std::string> &extended_permissions) {
     if (is_logged_in()) {
         return;
     }
@@ -227,6 +242,10 @@ void FBGraph::login(std::vector<std::string> &permissions) {
         fb_connect_url <<
             "user_" << permission << "," <<
             "friends_" << permission << ",";
+    }
+
+    for (auto permission : extended_permissions) {
+        fb_connect_url << permission << ",";
     }
 
     Browser browser(*this);
