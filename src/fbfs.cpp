@@ -36,34 +36,11 @@ static inline std::string basename(const std::string &path) {
 }
 
 static inline std::set<std::string> get_endpoints() {
-    std::set<std::string> endpoints;
-
-    FBQuery query("me", "permissions");
-    json_spirit::mObject permissions_response = get_fb_graph()->get(query);
-    if (!permissions_response.count("data")) {
-        std::cerr << PERMISSION_CHECK_ERROR << std::endl;
-        std::error_condition err = std::errc::network_unreachable;
-        errno = err.value();
-        return endpoints;
-    }
-
-    // Check
-    // https://developers.facebook.com/docs/facebook-login/permissions
-    // for JSON format
-    json_spirit::mObject permissions = (
-            permissions_response.at("data").get_array()[0].get_obj());
-    for (auto permission : permissions) {
-        if (permission.first == "installed") {
-            // Skip this permission, we know the app is installed
-            continue;
-        }
-
-        if (permission.second.get_int()) {
-            std::string endpoint = (
-                get_fb_graph()->get_endpoint_for_permission(permission.first));
-            endpoints.insert(endpoint);
-        }
-    }
+    std::set<std::string> endpoints = {
+        "albums",
+        "friends",
+        "status",
+    };
 
     return endpoints;
 }
@@ -134,6 +111,10 @@ static int fbfs_getattr(const char* cpath, struct stat *stbuf) {
             time.tv_sec = updated_time;
             stbuf->st_mtim = time;
             stbuf->st_size = status_response.at("message").get_str().length();
+        } else if (basename(dirname(path)) == "albums") {
+            // This is an album
+            stbuf->st_mode = S_IFDIR | 0755;
+            return 0;
         }
     } else {
         result = std::errc::no_such_file_or_directory;
@@ -197,6 +178,15 @@ static int fbfs_readdir(const char *cpath, void *buf, fuse_fill_dir_t filler,
                 }
                 std::string id = status.get_obj().at("id").get_str();
                 filler(buf, id.c_str(), NULL, 0);
+            }
+        } else if (basename(path) == "albums") {
+            FBQuery query(node, "albums");
+            json_spirit::mObject albums_response = get_fb_graph()->get(query);
+            json_spirit::mArray albums = albums_response.at("data").get_array();
+
+            for (auto& album : albums) {
+                std::string album_name = album.get_obj().at("name").get_str();
+                filler(buf, album_name.c_str(), NULL, 0);
             }
         }
     }
