@@ -36,13 +36,11 @@ static inline std::string basename(const std::string &path) {
 }
 
 static inline std::set<std::string> get_endpoints() {
-    std::set<std::string> endpoints = {
+    return {
         "albums",
         "friends",
         "status",
     };
-
-    return endpoints;
 }
 
 static inline std::string get_node_from_path(const std::string &path) {
