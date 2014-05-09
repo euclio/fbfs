@@ -43,6 +43,20 @@ static inline std::set<std::string> get_endpoints() {
     };
 }
 
+static inline std::error_condition handle_error(const json_spirit::mObject response) {
+    json_spirit::mObject error = response.at("error").get_obj();
+    std::cerr << error.at("message").get_str() << std::endl;
+    if (error.at("type").get_str() == "OAuthException") {
+        if (error.at("code").get_int() == 803) {
+            return std::errc::no_such_file_or_directory;
+        }
+
+        return std::errc::permission_denied;
+    }
+
+    return std::errc::operation_not_permitted;
+}
+
 static inline std::string get_node_from_path(const std::string &path) {
     std::string p(path);
     std::string node;
@@ -100,7 +114,7 @@ static int fbfs_getattr(const char* cpath, struct stat *stbuf) {
             query.add_parameter("fields", "message,updated_time");
             json_spirit::mObject status_response = get_fb_graph()->get(query);
             if (status_response.count("error")) {
-                result = std::errc::no_such_file_or_directory;
+                result = handle_error(status_response);
                 return -result.value();
             }
 
@@ -237,8 +251,7 @@ static int fbfs_write(const char *cpath, const char *buf, size_t size,
             query.add_parameter("message", data);
             json_spirit::mObject response = get_fb_graph()->post(query);
             if (response.count("error")) {
-                result = std::errc::operation_not_permitted;
-                std::cerr << response.at("error").get_obj().at("message").get_str();
+                result = handle_error(response);
                 return -result.value();
             }
 
