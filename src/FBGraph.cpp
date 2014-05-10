@@ -62,14 +62,18 @@ json_spirit::mObject FBGraph::get(const FBQuery &query,
     auto request = std::make_tuple(node, endpoint, edge, parameters);
     if (should_clear_cache || !request_cache.count(request)) {
         std::string response = send_request("GET", query);
-        request_cache[request] = parse_response(response);
+        request_cache[request] = parse_response(response).get_obj();
     }
 
     return request_cache.at(request);
 }
 
 json_spirit::mObject FBGraph::post(const FBQuery &query) {
-    return parse_response(send_request("POST", query));
+    return parse_response(send_request("POST", query)).get_obj();
+}
+
+json_spirit::mValue FBGraph::del(const FBQuery &query) {
+    return parse_response(send_request("DELETE", query));
 }
 
 std::string FBGraph::send_request(const std::string &type, const FBQuery &query) {
@@ -106,6 +110,8 @@ std::string FBGraph::send_request(const std::string &type, const FBQuery &query)
     if (type == "POST") {
         CurlHttpPost post;
         request.addOption(CurlPair<CURLoption,CurlHttpPost>(CURLOPT_HTTPPOST, post));
+    } else if (type == "DELETE") {
+        request.addOption(CurlPair<CURLoption,std::string>(CURLOPT_CUSTOMREQUEST, "DELETE"));
     }
 
     request.addOption(CurlPair<CURLoption,string>(CURLOPT_URL, url));
@@ -118,13 +124,12 @@ std::string FBGraph::send_request(const std::string &type, const FBQuery &query)
     return response;
 }
 
-json_spirit::mObject FBGraph::parse_response(const std::string &response) {
+json_spirit::mValue FBGraph::parse_response(const std::string &response) {
     std::cout << response << std::endl;
     json_spirit::mValue response_json;
     json_spirit::read(response, response_json);
-    json_spirit::mObject response_object = response_json.get_obj();
 
-    return response_object;
+    return response_json;
 }
 
 boost::optional<std::string> get_fragment_value(const std::string &fragment,
@@ -214,7 +219,13 @@ std::set<std::string> FBGraph::get_friends() {
 json_spirit::mObject FBGraph::fql_get(const std::string &fql_query) {
     FBQuery query("fql");
     query.add_parameter("q", fql_query);
-    return parse_response(send_request("GET", query));
+    return parse_response(send_request("GET", query)).get_obj();
+}
+
+std::string FBGraph::get_user() {
+    FBQuery query("me");
+    query.add_parameter("fields", "id");
+    return get(query).at("id").get_str();
 }
 
 void FBGraph::login(std::vector<std::string> &permissions,

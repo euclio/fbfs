@@ -136,6 +136,41 @@ static int fbfs_getattr(const char* cpath, struct stat *stbuf) {
     return 0;
 }
 
+static int fbfs_unlink(const char *cpath) {
+    std::string path(cpath);
+    std::error_condition result;
+
+    if (basename(path) == POST_FILE_NAME) {
+        result = std::errc::permission_denied;
+        return -result.value();
+    }
+
+    std::set<std::string> endpoints = get_endpoints();
+    if (endpoints.count(basename(dirname(path)))) {
+        // This is a file in an endpoint
+        if (dirname(path) == "/status") {
+            // This is a user status, so we can delete it.
+            // The Facebook API requires the status ID to be appended to the
+            // user ID instead of just using the status ID. This is
+            // undocumented.
+            std::string node = get_fb_graph()->get_user() + "_" + basename(path);
+            FBQuery query(node);
+            json_spirit::mValue response = get_fb_graph()->del(query);
+            if (response.type() == json_spirit::bool_type) {
+                return 0;
+            }
+
+            std::cout << "IT AIN'T A BOOL" << std::endl;
+            std::cout << response.type() << std::endl;
+
+            result = handle_error(response.get_obj());
+            return -result.value();
+        }
+    }
+
+    return 0;
+}
+
 static int fbfs_readdir(const char *cpath, void *buf, fuse_fill_dir_t filler,
                         off_t offset, struct fuse_file_info *fi) {
     (void)offset;
@@ -323,6 +358,7 @@ void initialize_operations(fuse_operations& operations) {
     std::memset(static_cast<void*>(&operations), 0, sizeof(operations));
 
     operations.getattr  = fbfs_getattr;
+    operations.unlink   = fbfs_unlink;
     operations.readdir  = fbfs_readdir;
     operations.open     = fbfs_open;
     operations.read     = fbfs_read;
