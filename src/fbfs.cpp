@@ -211,7 +211,7 @@ static int fbfs_readdir(const char *cpath, void *buf, fuse_fill_dir_t filler,
             FBQuery query(node, "statuses");
             query.add_parameter("date_format", "U");
             query.add_parameter("fields", "updated_time,message,id");
-            json_spirit::mObject status_response = get_fb_graph()->get(query);
+            json_spirit::mObject status_response = get_fb_graph()->get(query, true);
             json_spirit::mArray statuses = status_response.at("data").get_array();
 
             if (dirname(path) == "/") {
@@ -305,7 +305,7 @@ static int fbfs_read(const char *cpath, char *buf, size_t size, off_t offset,
 
     FBQuery query(basename(path));
     query.add_parameter("fields", "message");
-    json_spirit::mObject status_response = get_fb_graph()->get(query);
+    json_spirit::mObject status_response = get_fb_graph()->get(query, true);
     std::string message = status_response.at("message").get_str();
 
     if (static_cast<unsigned>(offset) < message.length()) {
