@@ -14,6 +14,8 @@ typedef std::map<
         std::vector<std::pair<std::string, std::string>>>,
     json_spirit::mObject> request_cache_t;
 
+typedef std::map<std::string, json_spirit::mObject> fql_cache_t;
+
 class FBGraph {
     public:
         FBGraph();
@@ -29,7 +31,7 @@ class FBGraph {
         json_spirit::mObject post(const FBQuery&);
         json_spirit::mValue del(const FBQuery&);
         std::string get_endpoint_for_permission(const std::string&) const;
-        json_spirit::mObject fql_get(const std::string&);
+        json_spirit::mObject fql_get(const std::string&, const bool = false);
         std::string get_uid_from_name(std::string name);
         std::set<std::string> get_friends();
         std::string get_user();
@@ -39,6 +41,7 @@ class FBGraph {
         bool logged_in;
         std::string access_token;
         request_cache_t request_cache;
+        fql_cache_t fql_cache;
 };
 
 #endif // FBGRAPH_H

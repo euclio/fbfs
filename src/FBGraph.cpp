@@ -216,10 +216,17 @@ std::set<std::string> FBGraph::get_friends() {
 }
 
 
-json_spirit::mObject FBGraph::fql_get(const std::string &fql_query) {
+json_spirit::mObject FBGraph::fql_get(const std::string &fql_query,
+                                      bool should_clear_cache) {
+    if (!should_clear_cache && fql_cache.count(fql_query)) {
+        return fql_cache.at(fql_query);
+    }
+
     FBQuery query("fql");
     query.add_parameter("q", fql_query);
-    return parse_response(send_request("GET", query)).get_obj();
+    json_spirit::mObject response = parse_response(send_request("GET", query)).get_obj();
+    fql_cache[fql_query] = response;
+    return response;
 }
 
 std::string FBGraph::get_user() {
