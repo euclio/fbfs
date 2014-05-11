@@ -9,6 +9,7 @@
 #include "json_spirit.h"
 
 #include <cerrno>
+#include <chrono>
 #include <ctime>
 #include <cstring>
 #include <iostream>
@@ -16,6 +17,8 @@
 #include <set>
 #include <string>
 #include <system_error>
+
+static std::chrono::time_point<std::chrono::system_clock> mount_time;
 
 static const std::string LOGIN_ERROR = "You are not logged in, so the program cannot fetch your profile. Terminating.";
 static const std::string LOGIN_SUCCESS = "You are now logged into Facebook.";
@@ -80,9 +83,13 @@ static int fbfs_getattr(const char* cpath, struct stat *stbuf) {
     std::error_condition result;
     std::memset(stbuf, 0, sizeof(struct stat));
 
-    if (path == "/") {
+    timespec mount_timespec;
+    mount_timespec.tv_sec = std::chrono::system_clock::to_time_t(mount_time);
+
+    if (path == "/" || path == "." || path == "..") {
         stbuf->st_mode = S_IFDIR | 0755;
         stbuf->st_nlink = 2;
+        stbuf->st_mtim = mount_timespec;
         return 0;
     }
 
@@ -96,6 +103,7 @@ static int fbfs_getattr(const char* cpath, struct stat *stbuf) {
     if (basename(path) == POST_FILE_NAME) {
         stbuf->st_mode = S_IFREG | 0200;
         stbuf->st_size = 0;
+        stbuf->st_mtim = mount_timespec;
         return 0;
     }
 
@@ -345,6 +353,11 @@ static void* fbfs_init(struct fuse_conn_info *ci) {
     }
 
     std::cout << LOGIN_SUCCESS << std::endl;
+
+    // Store the time that the filesystem was mounted
+    std::chrono::system_clock clock;
+    mount_time = clock.now();
+
     return fb_graph;
 }
 
