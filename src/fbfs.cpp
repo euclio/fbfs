@@ -64,18 +64,21 @@ static inline std::string get_node_from_path(const std::string &path) {
     std::string p(path);
     std::string node;
 
-    if (basename(p) == POST_FILE_NAME) {
+    if (dirname(p) == "/") {
+        return "me";
+    }
+
+    std::set<std::string> friends = get_fb_graph()->get_friends();
+    while (!friends.count(basename(p))) {
+        if (dirname(p) == "/") {
+            return "me";
+        }
+
         p = dirname(p);
     }
 
-    if (dirname(p) == "/") {
-        node = "me";
-    } else {
-        std::string friend_name = basename(dirname(p));
-        node = get_fb_graph()->get_uid_from_name(friend_name);
-    }
-
-    return node;
+    std::string friend_name = basename(p);
+    return get_fb_graph()->get_uid_from_name(friend_name);
 }
 
 static int fbfs_getattr(const char* cpath, struct stat *stbuf) {
@@ -191,29 +194,64 @@ static int fbfs_readdir(const char *cpath, void *buf, fuse_fill_dir_t filler,
     filler(buf, "..", NULL, 0);
 
     std::set<std::string> endpoints = get_endpoints();
-    std::set<std::string> friends = get_fb_graph()->get_friends();
-
-    if (path == "/" || friends.count(basename(path))) {
+    if (path == "/") {
         for (auto endpoint : endpoints) {
             filler(buf, endpoint.c_str(), NULL, 0);
         }
-    } else if (endpoints.count(basename(path))) {
-        // Request the user's friends
-        FBQuery query("me", "friends");
-        json_spirit::mObject friend_response = get_fb_graph()->get(query);
-        json_spirit::mArray friends_list = friend_response.at("data").get_array();
+        return 0;
+    }
 
-        std::string node = get_node_from_path(path);
-        if (basename(path) == "friends") {
-            if (dirname(path) == "/") {
-                for (auto friend_obj : friends_list) {
-                    std::string name = friend_obj.get_obj().at("name").get_str();
-                    filler(buf, name.c_str(), NULL, 0);
+    std::set<std::string> friends = get_fb_graph()->get_friends();
+    std::string node = get_node_from_path(path);
+
+    std::cout << path << std::endl;
+    if (friends.count(basename(path))) {
+        // We are in a friend's directory
+        for (auto endpoint : endpoints) {
+            if (endpoint == "friends") {
+                // The "friends" endpoint should only be shown if they have the
+                // app installed
+                FBQuery query(node);
+                query.add_parameter("fields", "installed");
+                json_spirit::mObject response = get_fb_graph()->get(query);
+                if (!response.at("installed").get_bool()) {
+                    // Skip this endpoint if not installed
+                    continue;
                 }
+            }
+
+            filler(buf, endpoint.c_str(), NULL, 0);
+        }
+    } else if (endpoints.count(basename(path))) {
+        std::string node = get_node_from_path(path);
+
+        json_spirit::mArray friends_list;
+        if (basename(path) == "friends") {
+            if (node == "me") {
+                FBQuery query(node, "friends");
+                json_spirit::mObject friend_response = get_fb_graph()->get(query);
+                friends_list = friend_response.at("data").get_array();
             } else {
-                // We are in a friends directory. We should either make the
-                // folder read-only, or a symlink to the user's friends.
-                // TODO: Implement
+                // Get friends of a friend (we can only retrieve users who use
+                // the app)
+                std::string friends_of_friend_query = (
+                    "SELECT uid, name FROM user "
+                         "WHERE uid IN (SELECT uid2 FROM friend "
+                         "WHERE uid1 IN (SELECT uid FROM user "
+                         "WHERE uid IN (SELECT uid2 FROM friend "
+                         "WHERE uid1 = " + node + ") and is_app_user=1))");
+                json_spirit::mObject friend_response = (
+                        get_fb_graph()->fql_get(friends_of_friend_query));
+                if (friend_response.count("error")) {
+                    result = handle_error(friend_response);
+                    return -result.value();
+                }
+                friends_list = friend_response.at("data").get_array();
+            }
+
+            for (auto friend_obj : friends_list) {
+                std::string name = friend_obj.get_obj().at("name").get_str();
+                filler(buf, name.c_str(), NULL, 0);
             }
         } else if (basename(path) == "status") {
             FBQuery query(node, "statuses");
@@ -339,6 +377,7 @@ static void* fbfs_init(struct fuse_conn_info *ci) {
     // to see what each permission requests.
     std::vector<std::string> permissions = {
         "status",
+        "friends",
     };
 
     std::vector<std::string> extended_permissions = {
