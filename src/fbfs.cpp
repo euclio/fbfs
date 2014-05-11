@@ -5,6 +5,7 @@
 #include "Util.h"
 
 #include <boost/filesystem.hpp>
+#include <boost/range/adaptor/reversed.hpp>
 #include <fuse.h>
 #include "json_spirit.h"
 
@@ -58,6 +59,24 @@ static inline std::error_condition handle_error(const json_spirit::mObject respo
     }
 
     return std::errc::operation_not_permitted;
+}
+
+static inline size_t depth_of_endpoint(const std::string &path) {
+    boost::filesystem::path p(path);
+    std::set<std::string> endpoints = get_endpoints();
+
+    size_t depth = 0;
+    for (boost::filesystem::path::const_iterator rcomp(p.end()), rend(p.begin());
+            rcomp != rend; --rcomp) {
+        if (rcomp->string().empty()) {
+            // The first path returns as empty, ignore it
+            continue;
+        } else if (endpoints.count(rcomp->string())) {
+            return depth;
+        }
+        ++depth;
+    }
+    return depth;
 }
 
 static inline std::string get_node_from_path(const std::string &path) {
@@ -272,14 +291,17 @@ static int fbfs_readdir(const char *cpath, void *buf, fuse_fill_dir_t filler,
                 std::string id = status.get_obj().at("id").get_str();
                 filler(buf, id.c_str(), NULL, 0);
             }
-        } else if (basename(path) == "albums") {
-            FBQuery query(node, "albums");
-            json_spirit::mObject albums_response = get_fb_graph()->get(query);
-            json_spirit::mArray albums = albums_response.at("data").get_array();
+        } else if (path.find("albums") != std::string::npos) {
+            if (depth_of_endpoint(path) == 0) {
+                // We are in the albums directory
+                FBQuery query(node, "albums");
+                json_spirit::mObject albums_response = get_fb_graph()->get(query);
+                json_spirit::mArray albums = albums_response.at("data").get_array();
 
-            for (auto& album : albums) {
-                std::string album_name = album.get_obj().at("name").get_str();
-                filler(buf, album_name.c_str(), NULL, 0);
+                for (auto& album : albums) {
+                    std::string album_name = album.get_obj().at("name").get_str();
+                    filler(buf, album_name.c_str(), NULL, 0);
+                }
             }
         }
     }
@@ -378,6 +400,7 @@ static void* fbfs_init(struct fuse_conn_info *ci) {
     std::vector<std::string> permissions = {
         "status",
         "friends",
+        "photos",
     };
 
     std::vector<std::string> extended_permissions = {
