@@ -190,9 +190,6 @@ static int fbfs_unlink(const char *cpath) {
                 return 0;
             }
 
-            std::cout << "IT AIN'T A BOOL" << std::endl;
-            std::cout << response.type() << std::endl;
-
             result = handle_error(response.get_obj());
             return -result.value();
         }

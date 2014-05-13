@@ -125,7 +125,6 @@ std::string FBGraph::send_request(const std::string &type, const FBQuery &query)
 }
 
 json_spirit::mValue FBGraph::parse_response(const std::string &response) {
-    std::cout << response << std::endl;
     json_spirit::mValue response_json;
     json_spirit::read(response, response_json);
 
