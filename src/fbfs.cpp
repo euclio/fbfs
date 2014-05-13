@@ -156,6 +156,25 @@ static int fbfs_getattr(const char* cpath, struct stat *stbuf) {
         } else if (basename(dirname(path)) == "albums") {
             // This is an album
             stbuf->st_mode = S_IFDIR | 0755;
+            std::string fql_query = (
+                "SELECT modified FROM album WHERE aid IN "
+                "(SELECT aid FROM album WHERE owner = me()) AND name = "
+                "\"" + basename(path) + "\"");
+
+            json_spirit::mObject response = get_fb_graph()->fql_get(fql_query);
+            if (response.count("error")) {
+                result = handle_error(response);
+                return -result.value();
+            }
+
+            json_spirit::mArray album_array = response.at("data").get_array();
+            if (album_array.size() > 0) {
+                const time_t updated_time = album_array[0].get_obj().at("modified").get_int();
+                timespec time;
+                time.tv_sec = updated_time;
+                stbuf->st_mtim = time;
+            }
+
             return 0;
         }
     } else {
